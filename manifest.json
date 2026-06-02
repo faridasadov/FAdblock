@@ -15,6 +15,7 @@
 
   "background": {
     "service_worker": "background/service-worker.js",
+    "scripts": ["background/service-worker.js"],
     "type": "module"
   },
 
@@ -35,7 +36,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "AdBlock Pro"
+    "default_title": "FAdblock"
   },
 
   "options_ui": {
@@ -63,7 +64,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "adblock-pro@farid.dev",
-      "strict_min_version": "109.0"
+      "strict_min_version": "128.0"
     }
   }
 }

@@ -11,6 +11,8 @@
     "pack:firefox": "mkdir -p dist && zip -r dist/fadblock-firefox.zip manifest.json background content popup options rules icons -x '*.DS_Store'"
   },
   "devDependencies": {
-    "canvas": "^3.2.3"
+    "canvas": "^3.2.3",
+    "playwright": "^1.60.0",
+    "web-ext": "^10.3.0"
   }
 }
