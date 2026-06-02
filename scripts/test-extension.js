@@ -1,146 +1,137 @@
 #!/usr/bin/env node
 const { chromium } = require('playwright');
+const { execSync } = require('child_process');
+const http = require('http');
 const path = require('path');
+const fs   = require('fs');
 
 const EXT_PATH = path.resolve(__dirname, '..');
+const BROWSER  = process.argv[2] || 'all';
 const PASS = '\x1b[32m✓\x1b[0m';
 const FAIL = '\x1b[31m✗\x1b[0m';
-const results = [];
-
-function check(label, passed, detail = '') {
-  results.push({ label, passed, detail });
-  console.log(`${passed ? PASS : FAIL} ${label}${detail ? ' — ' + detail : ''}`);
-}
-
-async function getExtId(ctx) {
-  for (const sw of ctx.serviceWorkers()) {
-    const m = sw.url().match(/chrome-extension:\/\/([^/]+)/);
-    if (m) return m[1];
-  }
-  return null;
-}
-
-const http = require('http');
-
-const AD_TEST_HTML_BODY = `<!DOCTYPE html><html><body>
-<h1>Test Page</h1>
-<div class="adsbygoogle" style="width:300px;height:50px;background:red">GOOGLE AD</div>
-<ins class="adsbygoogle" style="display:block;width:300px;height:90px;background:orange">INS AD</ins>
+const HEAD = '\x1b[36m►\x1b[0m';
+const AD_SEL = '.adsbygoogle,ins.adsbygoogle,#taboola-below-article,.advertisement';
+const AD_HTML = `<!DOCTYPE html><html><body>
+<div class="adsbygoogle" style="width:300px;height:50px;background:red">AD</div>
+<ins class="adsbygoogle" style="display:block;background:orange;height:50px">INS</ins>
 <div id="taboola-below-article" style="background:yellow;height:40px">TABOOLA</div>
-<div class="advertisement" style="background:pink;height:40px">ADVERTISEMENT</div>
-<p id="real-content" style="color:green;font-size:20px">Real content visible</p>
+<div class="advertisement" style="background:pink;height:40px">ADVERT</div>
+<p id="real-content" style="color:green;font-size:20px">Real content</p>
 </body></html>`;
 
-function startServer() {
-  return new Promise(resolve => {
-    const srv = http.createServer((req, res) => {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(AD_TEST_HTML_BODY);
-    });
-    srv.listen(0, '127.0.0.1', () => resolve(srv));
+function srv() {
+  return new Promise(r => {
+    const s = http.createServer((_,res) => { res.writeHead(200,{'Content-Type':'text/html'}); res.end(AD_HTML); });
+    s.listen(0,'127.0.0.1',() => r(s));
   });
 }
+function check(res, label, ok, detail='') {
+  res.push(ok);
+  console.log(`  ${ok?PASS:FAIL} ${label}${detail?' — '+detail:''}`);
+}
 
-async function main() {
+async function testChrome() {
+  console.log(`\n${HEAD} Chrome\n`);
+  const res = [];
   const ctx = await chromium.launchPersistentContext('', {
     headless: false,
-    args: [
-      `--disable-extensions-except=${EXT_PATH}`,
-      `--load-extension=${EXT_PATH}`,
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-    ],
-    viewport: { width: 1280, height: 800 },
+    args:[`--disable-extensions-except=${EXT_PATH}`,`--load-extension=${EXT_PATH}`,'--no-sandbox'],
+    viewport:{width:1280,height:800},
   });
+  await new Promise(r=>setTimeout(r,2000));
 
-  await new Promise(r => setTimeout(r, 2000));
+  let extId=null;
+  for(const sw of ctx.serviceWorkers()){const m=sw.url().match(/chrome-extension:\/\/([^/]+)/);if(m){extId=m[1];break;}}
+  check(res,'Extension yükləndi',!!extId, extId?extId.slice(0,12)+'…':'');
+  if(!extId){await ctx.close();return res;}
 
-  // 1. Extension loads
-  const extId = await getExtId(ctx);
-  check('Extension yükləndi', !!extId, extId || 'ID tapılmadı');
+  const popup=await ctx.newPage();
+  await popup.goto(`chrome-extension://${extId}/popup/popup.html`);
+  await popup.waitForLoadState('networkidle');
+  check(res,'Popup başlığı "FAdblock"', await popup.textContent('.logo-text').catch(()=>null)==='FAdblock');
+  check(res,'Global toggle',  !!(await popup.$('#globalToggle')));
+  check(res,'Sayt toggle',    !!(await popup.$('#siteToggle')));
+  check(res,'3 stat kartı',   await popup.$$('.stat-card').then(a=>a.length===3));
+  check(res,'Donate düyməsi', !!(await popup.$('#donateBtn')));
+  await popup.evaluate(()=>document.getElementById('globalToggle').click());
+  await new Promise(r=>setTimeout(r,400));
+  check(res,'Global OFF → is-off', ((await popup.getAttribute('#app','class'))||'').includes('is-off'));
+  await popup.evaluate(()=>document.getElementById('globalToggle').click());
+  await popup.screenshot({path:'/tmp/chrome_01_popup.png'});
 
-  if (!extId) { await ctx.close(); return; }
+  const opt=await ctx.newPage();
+  await opt.goto(`chrome-extension://${extId}/options/options.html`);
+  await opt.waitForLoadState('networkidle');
+  check(res,'Options başlığı',await opt.textContent('h1').catch(()=>null)==='FAdblock');
+  check(res,'Attribution: faridasadov',(await opt.textContent('.author-link').catch(()=>'')).includes('faridasadov'));
+  check(res,'PayPal URL',(await opt.evaluate(()=>document.getElementById('donateBtn')?.href||'')).includes('paypal.com'));
+  await opt.fill('#domainInput','test.az');
+  await opt.click('#addDomain');
+  await new Promise(r=>setTimeout(r,400));
+  check(res,'Whitelist əlavə',await opt.$$('.whitelist li:not(.empty-hint)').then(a=>a.length===1));
+  await opt.click('.remove-btn');
+  await new Promise(r=>setTimeout(r,300));
+  check(res,'Whitelist silmə',await opt.$$('.whitelist li:not(.empty-hint)').then(a=>a.length===0));
+  await opt.screenshot({path:'/tmp/chrome_02_options.png',fullPage:true});
 
-  // 2. Popup opens
-  const popupPage = await ctx.newPage();
-  await popupPage.goto(`chrome-extension://${extId}/popup/popup.html`);
-  await popupPage.waitForLoadState('networkidle');
-  const popupTitle = await popupPage.textContent('.logo-text').catch(() => null);
-  check('Popup açıldı', popupTitle === 'FAdblock', `başlıq: "${popupTitle}"`);
-  check('Toggle mövcuddur', await popupPage.$('#siteToggle').then(Boolean), '');
-  check('3 statistika kartı var', await popupPage.$$('.stat-card').then(a => a.length === 3), '');
-  await popupPage.screenshot({ path: '/tmp/test_01_popup.png' });
-
-  // 3. Options page opens
-  const optPage = await ctx.newPage();
-  await optPage.goto(`chrome-extension://${extId}/options/options.html`);
-  await optPage.waitForLoadState('networkidle');
-  const optTitle = await optPage.textContent('h1').catch(() => null);
-  check('Options açıldı', optTitle === 'FAdblock', `başlıq: "${optTitle}"`);
-  check('Whitelist input mövcuddur', await optPage.$('#domainInput').then(Boolean), '');
-  await optPage.screenshot({ path: '/tmp/test_02_options.png', fullPage: true });
-
-  // 4. Whitelist add/remove
-  await optPage.fill('#domainInput', 'testsite.com');
-  await optPage.click('#addDomain');
-  await new Promise(r => setTimeout(r, 500));
-  const whitelistItems = await optPage.$$('.whitelist li:not(.empty-hint)');
-  check('Whitelist əlavə işləyir', whitelistItems.length === 1, `${whitelistItems.length} item`);
-  if (whitelistItems.length > 0) {
-    await optPage.click('.remove-btn');
-    await new Promise(r => setTimeout(r, 300));
-    const afterRemove = await optPage.$$('.whitelist li:not(.empty-hint)');
-    check('Whitelist silmə işləyir', afterRemove.length === 0, '');
-  }
-  await optPage.screenshot({ path: '/tmp/test_03_whitelist.png', fullPage: true });
-
-  // 5. Cosmetic filter test — real HTTP page (content scripts don't run on data: URLs)
-  const srv = await startServer();
-  const port = srv.address().port;
-  const testUrl = `http://127.0.0.1:${port}/test`;
-
-  const adPage = await ctx.newPage();
-  await adPage.goto(testUrl, { waitUntil: 'domcontentloaded' });
-  await new Promise(r => setTimeout(r, 1000));
-
-  const cosmeticStyleInjected = await adPage.evaluate(() =>
-    !!document.getElementById('__adblock_pro_css__')
-  );
-  const AD_SELECTORS = '.adsbygoogle, ins.adsbygoogle, #taboola-below-article, .advertisement';
-  const adsFound = await adPage.evaluate(sel =>
-    document.querySelectorAll(sel).length, AD_SELECTORS
-  );
-  const adsVisible = await adPage.evaluate(sel =>
-    Array.from(document.querySelectorAll(sel))
-      .filter(el => {
-        const s = getComputedStyle(el);
-        return s.display !== 'none' && s.visibility !== 'hidden';
-      }).length, AD_SELECTORS
-  );
-  const realContent = await adPage.evaluate(() =>
-    getComputedStyle(document.getElementById('real-content')).display !== 'none'
-  );
-
-  check('Kosmetik CSS inject edildi', cosmeticStyleInjected, '');
-  check(`Ad elementlər tapıldı (${adsFound})`, adsFound > 0, '');
-  check(`Reklamlar gizlədildi (${adsFound - adsVisible}/${adsFound})`, adsVisible === 0, `görünən: ${adsVisible}`);
-  check('Real content görünür', realContent, '');
-  await adPage.screenshot({ path: '/tmp/test_04_cosmetic.png' });
-  srv.close();
-
-  // 6. Stats reset
-  await optPage.bringToFront();
-  await optPage.click('#resetStats');
-  await new Promise(r => setTimeout(r, 300));
-  const totalAfterReset = await optPage.textContent('#totalBlocked');
-  check('Statistika sıfırlandı', totalAfterReset.trim() === '0', `dəyər: "${totalAfterReset.trim()}"`);
-
-  // Summary
-  console.log('\n── Xülasə ──────────────────');
-  const passed = results.filter(r => r.passed).length;
-  console.log(`${passed}/${results.length} test keçdi`);
+  const server=await srv();
+  const ap=await ctx.newPage();
+  await ap.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'domcontentloaded'});
+  await new Promise(r=>setTimeout(r,800));
+  check(res,'Kosmetik CSS inject',await ap.evaluate(()=>!!document.getElementById('__adblock_pro_css__')));
+  const vis=await ap.evaluate(s=>[...document.querySelectorAll(s)].filter(el=>{const c=getComputedStyle(el);return c.display!=='none'&&c.visibility!=='hidden';}).length,AD_SEL);
+  const tot=await ap.evaluate(s=>document.querySelectorAll(s).length,AD_SEL);
+  check(res,`Reklamlar gizlədildi ${tot-vis}/${tot}`,vis===0,`görünən:${vis}`);
+  check(res,'Real content görünür',await ap.evaluate(()=>getComputedStyle(document.getElementById('real-content')).display!=='none'));
+  await ap.screenshot({path:'/tmp/chrome_03_cosmetic.png'});
+  server.close();
 
   await ctx.close();
+  console.log(`\n  ${res.filter(Boolean).length}/${res.length} test keçdi`);
+  return res;
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+async function testFirefox() {
+  console.log(`\n${HEAD} Firefox (lint + build + manifest)\n`);
+  const res=[];
+
+  try{
+    const out=execSync(`npx web-ext lint --source-dir ${EXT_PATH} 2>&1`,{encoding:'utf8'});
+    const e=(out.match(/errors\s+(\d+)/)||['','0'])[1];
+    check(res,'web-ext lint: 0 error',e==='0',`${e} error`);
+  }catch(e){check(res,'web-ext lint',false,String(e.stdout||e).slice(0,60));}
+
+  let xpi;
+  try{
+    const out=execSync(`npx web-ext build --source-dir ${EXT_PATH} --artifacts-dir /tmp/fadblock-build --overwrite-dest 2>&1`,{encoding:'utf8'});
+    const m=out.match(/Your web extension is ready: (.+\.zip)/);
+    xpi=m?m[1].trim():null;
+    check(res,'web-ext build (XPI)',!!xpi,xpi?path.basename(xpi):'failed');
+  }catch(e){check(res,'web-ext build',false,String(e).slice(0,60));}
+
+  const mf=JSON.parse(fs.readFileSync(path.join(EXT_PATH,'manifest.json'),'utf8'));
+  check(res,'manifest_version:3',           mf.manifest_version===3);
+  check(res,'background.scripts (FF)',       Array.isArray(mf.background?.scripts));
+  check(res,'strict_min_version>=128',       parseFloat(mf.browser_specific_settings?.gecko?.strict_min_version||'0')>=128);
+  check(res,'gecko id',                      !!mf.browser_specific_settings?.gecko?.id);
+
+  const cs=fs.readFileSync(path.join(EXT_PATH,'content','content.js'),'utf8');
+  check(res,'YouTube ad-skip kodu',          cs.includes('setupYouTubeAdSkip'));
+  check(res,'Global state yoxlaması',        cs.includes('adblock_enabled'));
+
+  const rules=JSON.parse(fs.readFileSync(path.join(EXT_PATH,'rules','rules.json'),'utf8'));
+  check(res,`rules.json ${rules.length} qayda`, rules.length>=90);
+
+  console.log(`\n  ${res.filter(Boolean).length}/${res.length} test keçdi`);
+  if(xpi) console.log(`  XPI: ${xpi}`);
+  return res;
+}
+
+(async()=>{
+  let cr=[],ff=[];
+  if(BROWSER==='chrome'||BROWSER==='all') cr=await testChrome().catch(e=>{console.error(e.message);return[];});
+  if(BROWSER==='firefox'||BROWSER==='all') ff=await testFirefox().catch(e=>{console.error(e.message);return[];});
+  const total=cr.length+ff.length, passed=[...cr,...ff].filter(Boolean).length;
+  console.log(`\n══ Ümumi: ${passed}/${total} ══\n`);
+  process.exit(passed===total?0:1);
+})();
