@@ -1,27 +1,18 @@
+const PAYPAL_URL = 'PAYPAL_LINK_HERE';
 const $ = id => document.getElementById(id);
 
 function formatNumber(n) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
   return String(n);
 }
 
 function renderWhitelist(list) {
   const ul = $('whitelistEl');
-  const emptyHint = $('emptyHint');
-
-  Array.from(ul.children).forEach(li => {
-    if (li.id !== 'emptyHint') li.remove();
-  });
-
-  if (list.length === 0) {
-    emptyHint.style.display = '';
-    return;
-  }
-
-  emptyHint.style.display = 'none';
+  Array.from(ul.children).forEach(li => { if (li.id !== 'emptyHint') li.remove(); });
+  $('emptyHint').style.display = list.length ? 'none' : '';
   list.forEach(domain => {
-    const li = document.createElement('li');
+    const li  = document.createElement('li');
     li.textContent = domain;
     const btn = document.createElement('button');
     btn.className = 'remove-btn';
@@ -42,13 +33,10 @@ async function removeDomain(domain) {
 async function addDomain() {
   const input = $('domainInput');
   const raw = input.value.trim().toLowerCase()
-    .replace(/^(https?:\/\/)?(www\.)?/, '')
-    .replace(/\/.*$/, '');
+    .replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/.*$/, '');
   if (!raw) return;
-
   const { list: before } = await chrome.runtime.sendMessage({ type: 'GET_WHITELIST' });
   if (before.includes(raw)) { input.select(); return; }
-
   await chrome.runtime.sendMessage({ type: 'TOGGLE_WHITELIST', domain: raw });
   const { list } = await chrome.runtime.sendMessage({ type: 'GET_WHITELIST' });
   renderWhitelist(list);
@@ -60,7 +48,6 @@ async function init() {
     chrome.runtime.sendMessage({ type: 'GET_STATS' }),
     chrome.runtime.sendMessage({ type: 'GET_WHITELIST' })
   ]);
-
   $('totalBlocked').textContent = formatNumber(stats?.total || 0);
   $('todayBlocked').textContent = formatNumber(stats?.today || 0);
   renderWhitelist(list);
@@ -71,6 +58,13 @@ async function init() {
     await chrome.runtime.sendMessage({ type: 'RESET_STATS' });
     $('totalBlocked').textContent = '0';
     $('todayBlocked').textContent = '0';
+  });
+
+  const btn = $('donateBtn');
+  btn.href = PAYPAL_URL;
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    chrome.tabs.create({ url: PAYPAL_URL });
   });
 }
 

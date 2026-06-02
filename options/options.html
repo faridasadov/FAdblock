@@ -2,9 +2,8 @@
 <html lang="az">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>FAdblock — Parametrlər</title>
-
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
@@ -18,6 +17,7 @@
     </header>
 
     <main>
+      <!-- Stats -->
       <section class="card">
         <h2>Statistika</h2>
         <div class="stats-row">
@@ -33,18 +33,13 @@
         <button class="btn btn--danger" id="resetStats">Statistikanı sıfırla</button>
       </section>
 
+      <!-- Whitelist -->
       <section class="card">
         <h2>İcazə verilən saytlar</h2>
         <p class="hint">Bu saytlarda bloklama işləmir.</p>
         <div class="input-row">
-          <input
-            type="text"
-            id="domainInput"
-            placeholder="example.com"
-            aria-label="Sayt domen adı"
-            autocomplete="off"
-            spellcheck="false"
-          />
+          <input type="text" id="domainInput" placeholder="example.com"
+            aria-label="Sayt domen adı" autocomplete="off" spellcheck="false" />
           <button class="btn btn--primary" id="addDomain">Əlavə et</button>
         </div>
         <ul class="whitelist" id="whitelistEl" aria-label="İcazə verilən saytlar siyahısı">
@@ -52,10 +47,28 @@
         </ul>
       </section>
 
+      <!-- Donate -->
+      <section class="card card--donate">
+        <h2>♥ Layihəni dəstəklə</h2>
+        <p>FAdblock pulsuzdur və həmişə pulsuz qalacaq. Bəyəndinsə, bir qəhvə al!</p>
+        <a class="btn btn--paypal" id="donateBtn" href="#" target="_blank">
+          PayPal ilə dəstəklə
+        </a>
+      </section>
+
+      <!-- About / Attribution -->
       <section class="card card--about">
         <h2>Haqqında</h2>
-        <p>FAdblock — Chrome və Firefox üçün açıq mənbəli reklam bloker.</p>
-        <p class="muted">Manifest V3 · declarativeNetRequest · Kosmetik filtrlər</p>
+        <p>
+          <strong>FAdblock</strong> — Chrome və Firefox üçün açıq mənbəli reklam bloker.<br />
+          Manifest V3 · declarativeNetRequest · Kosmetik filtrlər · YouTube ad-skip
+        </p>
+        <div class="author-row">
+          <span class="author-label">Müəllif</span>
+          <a class="author-link" href="https://github.com/faridasadov" target="_blank">
+            github.com/faridasadov
+          </a>
+        </div>
       </section>
     </main>
   </div>

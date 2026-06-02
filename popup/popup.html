@@ -2,26 +2,28 @@
 <html lang="az">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AdBlock Pro</title>
+  <title>FAdblock</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <div class="container">
+  <div class="container" id="app">
     <header class="header">
       <div class="logo">
-        <img src="../icons/icon32.png" alt="" class="logo-img" aria-hidden="true" />
+        <img src="../icons/icon32.png" alt="" aria-hidden="true" class="logo-img" />
         <span class="logo-text">FAdblock</span>
       </div>
-      <label class="toggle" aria-label="Bu sayt üçün bloklamanı aç/bağla">
-        <input type="checkbox" id="siteToggle" checked />
-        <span class="slider" aria-hidden="true"></span>
+      <label class="toggle" aria-label="Bütün bloklamanı aç/bağla">
+        <input type="checkbox" id="globalToggle" checked />
+        <span class="slider"></span>
       </label>
     </header>
 
-    <div class="site-info">
+    <div class="site-row" id="siteRow">
       <span id="siteDomain" class="domain">—</span>
-      <span id="siteStatus" class="badge badge--on">Aktiv</span>
+      <label class="toggle toggle--sm" aria-label="Bu sayt üçün aç/bağla">
+        <input type="checkbox" id="siteToggle" checked />
+        <span class="slider"></span>
+      </label>
     </div>
 
     <div class="stats-grid">
@@ -41,7 +43,7 @@
 
     <footer class="footer">
       <button class="btn-link" id="openOptions">Parametrlər</button>
-      <button class="btn-link" id="resetStats">Sıfırla</button>
+      <button class="btn-donate" id="donateBtn">♥ Dəstəklə</button>
     </footer>
   </div>
   <script src="popup.js" type="module"></script>
