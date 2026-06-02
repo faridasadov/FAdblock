@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAdblock — Parametrlər</title>
+
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <img src="../icons/icon48.png" alt="" aria-hidden="true" class="header-icon" />
+      <div>
+        <h1>FAdblock</h1>
+        <p class="subtitle">Parametrlər</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Statistika</h2>
+        <div class="stats-row">
+          <div class="stat">
+            <span class="stat-n" id="totalBlocked">0</span>
+            <span class="stat-l">Cəmi bloklandı</span>
+          </div>
+          <div class="stat">
+            <span class="stat-n" id="todayBlocked">0</span>
+            <span class="stat-l">Bu gün</span>
+          </div>
+        </div>
+        <button class="btn btn--danger" id="resetStats">Statistikanı sıfırla</button>
+      </section>
+
+      <section class="card">
+        <h2>İcazə verilən saytlar</h2>
+        <p class="hint">Bu saytlarda bloklama işləmir.</p>
+        <div class="input-row">
+          <input
+            type="text"
+            id="domainInput"
+            placeholder="example.com"
+            aria-label="Sayt domen adı"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button class="btn btn--primary" id="addDomain">Əlavə et</button>
+        </div>
+        <ul class="whitelist" id="whitelistEl" aria-label="İcazə verilən saytlar siyahısı">
+          <li class="empty-hint" id="emptyHint">Siyahı boşdur</li>
+        </ul>
+      </section>
+
+      <section class="card card--about">
+        <h2>Haqqında</h2>
+        <p>FAdblock — Chrome və Firefox üçün açıq mənbəli reklam bloker.</p>
+        <p class="muted">Manifest V3 · declarativeNetRequest · Kosmetik filtrlər</p>
+      </section>
+    </main>
+  </div>
+  <script src="options.js" type="module"></script>
+</body>
+</html>
