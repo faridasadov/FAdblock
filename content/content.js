@@ -48,7 +48,7 @@
       if (!document.getElementById(STYLE_ID)) injectCosmeticCSS();
     });
     document.addEventListener('DOMContentLoaded', () => {
-      obs.observe(document.documentElement, { childList: true, subtree: false });
+      obs.observe(document.documentElement, { childList: true, subtree: true });
     }, { once: true });
   }
 
@@ -68,23 +68,27 @@
 
   // --- YouTube ad handling ---
   function setupYouTubeAdSkip() {
-    const tick = () => {
-      // Click "Skip Ad" button if available
-      const skipBtn = document.querySelector(
-        '.ytp-skip-ad-button, .ytp-ad-skip-button-container button'
-      );
-      if (skipBtn) { skipBtn.click(); return; }
+    let timer = null;
 
-      // Fast-forward through non-skippable video ads
-      const video  = document.querySelector('video');
-      const isAd   = document.querySelector('.ad-showing');
-      if (video && isAd && !video.ended) {
-        if (!video.muted) video.muted = true;
-        if (video.playbackRate < 16) video.playbackRate = 16;
-      }
-    };
+    function startTick() {
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => {
+        const skipBtn = document.querySelector(
+          '.ytp-skip-ad-button, .ytp-ad-skip-button-container button'
+        );
+        if (skipBtn) { skipBtn.click(); return; }
+        const video = document.querySelector('video');
+        const isAd  = document.querySelector('.ad-showing');
+        if (video && isAd && !video.ended) {
+          if (!video.muted) video.muted = true;
+          if (video.playbackRate < 16) video.playbackRate = 16;
+        }
+      }, 300);
+    }
 
-    const timer = setInterval(tick, 300);
+    startTick();
+    // YouTube uses client-side navigation — restart on each page transition
+    document.addEventListener('yt-navigate-finish', startTick);
     window.addEventListener('unload', () => clearInterval(timer), { once: true });
   }
 })();

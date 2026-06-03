@@ -3,13 +3,16 @@ const WHITELIST_KEY = 'adblock_whitelist';
 const ENABLED_KEY = 'adblock_enabled';
 const TAB_PREFIX  = 'tab_';
 
-// PayPal donate URL — update when user provides link
-export const PAYPAL_URL = 'PAYPAL_LINK_HERE';
-
 // In-memory cache for hot-path (webRequest fires on every request)
 let _enabled   = true;
 let _whitelist = new Set();
 const _tabUrls = new Map(); // tabId → hostname
+
+// In-memory stats counters to avoid read-modify-write race conditions
+let _pendingTotal = 0;
+let _pendingToday = 0;
+const _tabCounts  = new Map(); // tabId → count
+let _flushTimer   = null;
 
 // --- Domain list (kept in sync with generate-rules.js) ---
 const AD_DOMAINS = new Set([
@@ -104,6 +107,7 @@ chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
 
 chrome.tabs.onRemoved.addListener(tabId => {
   _tabUrls.delete(tabId);
+  _tabCounts.delete(tabId);
   chrome.storage.session?.remove(TAB_PREFIX + tabId).catch(() => {});
 });
 
@@ -118,26 +122,45 @@ chrome.webRequest.onBeforeRequest.addListener(
   { urls: AD_URL_FILTERS }
 );
 
-async function incrementStats(tabId) {
+function incrementStats(tabId) {
+  _pendingTotal++;
+  _pendingToday++;
+  if (tabId > 0) {
+    _tabCounts.set(tabId, (_tabCounts.get(tabId) || 0) + 1);
+    const count = _tabCounts.get(tabId);
+    chrome.action.setBadgeText({
+      text: count > 999 ? '1k+' : String(count),
+      tabId
+    }).catch(() => {});
+  }
+  scheduleFlush();
+}
+
+function scheduleFlush() {
+  if (_flushTimer) return;
+  _flushTimer = setTimeout(flushStats, 500);
+}
+
+async function flushStats() {
+  _flushTimer = null;
+  if (_pendingTotal === 0) return;
+  const delta = _pendingTotal;
+  const deltaToday = _pendingToday;
+  _pendingTotal = 0;
+  _pendingToday = 0;
+
   const data  = await chrome.storage.local.get(STATS_KEY);
   const stats = data[STATS_KEY] || { total: 0, today: 0, lastReset: new Date().toDateString() };
   if (stats.lastReset !== new Date().toDateString()) {
     stats.today = 0;
     stats.lastReset = new Date().toDateString();
   }
-  stats.total++;
-  stats.today++;
+  stats.total += delta;
+  stats.today += deltaToday;
   await chrome.storage.local.set({ [STATS_KEY]: stats });
 
-  if (tabId > 0) {
-    const key   = TAB_PREFIX + tabId;
-    const td    = await (chrome.storage.session?.get(key) ?? Promise.resolve({}));
-    const count = (td[key] || 0) + 1;
-    await chrome.storage.session?.set({ [key]: count });
-    chrome.action.setBadgeText({
-      text: count > 999 ? '1k+' : String(count),
-      tabId
-    }).catch(() => {});
+  for (const [tabId, count] of _tabCounts) {
+    await chrome.storage.session?.set({ [TAB_PREFIX + tabId]: count }).catch(() => {});
   }
 }
 
