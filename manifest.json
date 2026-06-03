@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FAdblock",
-  "version": "1.0.10",
-  "description": "Sürətli və yüngül reklam bloker — Chrome və Firefox üçün",
+  "version": "1.0.11",
+  "description": "Sürətli və yüngül reklam bloker — Firefox üçün",
   "permissions": [
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
