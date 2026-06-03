@@ -67,13 +67,22 @@
     el.textContent = selectors.join(',\n') + ' {\n  display: none !important;\n  visibility: hidden !important;\n}';
   }
 
+  function isYouTubeWatchPage() {
+    return location.hostname.includes('youtube.com') &&
+      (/^\/watch/.test(location.pathname) || /^\/shorts\//.test(location.pathname) || /^\/live\//.test(location.pathname));
+  }
+
+  function getYouTubeMainVideo() {
+    return document.querySelector('#movie_player video, .html5-video-player video');
+  }
+
   // Check global enabled state before doing anything
   chrome.storage.local.get(['adblock_enabled', 'custom_selectors'], ({ adblock_enabled, custom_selectors }) => {
     if (adblock_enabled === false) return;
     injectCosmeticCSS();
     applyCustomSelectors(custom_selectors || []);
     startObserver();
-    if (location.hostname.includes('youtube.com')) setupYouTubeAdBypass();
+    if (isYouTubeWatchPage()) setupYouTubeAdBypass();
   });
 
   // React to global toggle and custom selector changes in real time
@@ -88,7 +97,7 @@
         chrome.storage.local.get('custom_selectors', ({ custom_selectors }) => {
           applyCustomSelectors(custom_selectors || []);
         });
-        if (location.hostname.includes('youtube.com')) setupYouTubeAdBypass();
+        if (isYouTubeWatchPage()) setupYouTubeAdBypass();
       }
     }
     if ('custom_selectors' in changes) {
@@ -151,6 +160,8 @@
       state.lastRun = now;
       injectYouTubeCSS();
 
+      if (!isYouTubeWatchPage()) return;
+
       const candidates = document.querySelectorAll([
         'ytd-enforcement-message-view-model',
         'yt-playability-error-supported-renderers',
@@ -177,12 +188,11 @@
       player?.classList.remove('ad-showing', 'ytp-hide-info-bar');
       player?.removeAttribute('style');
 
-      const video = document.querySelector('video');
+      const video = getYouTubeMainVideo();
       if (video) {
         if (video.playbackRate > 2 && !document.querySelector('.ad-showing')) {
           video.playbackRate = 1;
         }
-        if (video.paused) video.play().catch(() => {});
       }
 
       document.querySelector('yt-playability-error-supported-renderers')?.remove();
@@ -201,11 +211,12 @@
       if (state.timer) clearInterval(state.timer);
       scheduleEnforcementClear();
       state.timer = setInterval(() => {
+        if (!isYouTubeWatchPage()) return;
         const skipBtn = document.querySelector(
           '.ytp-skip-ad-button, .ytp-ad-skip-button-container button'
         );
         if (skipBtn) { skipBtn.click(); return; }
-        const video = document.querySelector('video');
+        const video = getYouTubeMainVideo();
         const isAd  = document.querySelector('.ad-showing');
         if (video && isAd && !video.ended) {
           if (!video.muted) video.muted = true;
@@ -232,7 +243,14 @@
     });
     state.observer.observe(document.documentElement, { childList: true, subtree: true });
     // YouTube uses client-side navigation — restart on each page transition
-    state.navHandler = () => startTick();
+    state.navHandler = () => {
+      if (isYouTubeWatchPage()) {
+        startTick();
+      } else if (state.timer) {
+        clearInterval(state.timer);
+        state.timer = null;
+      }
+    };
     document.addEventListener('yt-navigate-finish', state.navHandler);
     state.unloadHandler = () => {
       clearInterval(state.timer);

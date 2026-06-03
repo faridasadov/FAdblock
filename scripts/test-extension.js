@@ -4,6 +4,7 @@ const { execSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 const fs   = require('fs');
+const { prepareFirefoxPackage } = require('./firefox-package');
 
 const EXT_PATH = path.resolve(__dirname, '..');
 const BROWSER  = process.argv[2] || 'all';
@@ -94,24 +95,25 @@ async function testChrome() {
 async function testFirefox() {
   console.log(`\n${HEAD} Firefox (lint + build + manifest)\n`);
   const res=[];
+  const firefoxSource = prepareFirefoxPackage(EXT_PATH);
 
   try{
-    const out=execSync(`npx web-ext lint --source-dir ${EXT_PATH} 2>&1`,{encoding:'utf8'});
+    const out=execSync(`npx web-ext lint --source-dir ${firefoxSource} 2>&1`,{encoding:'utf8'});
     const e=(out.match(/errors\s+(\d+)/)||['','0'])[1];
     check(res,'web-ext lint: 0 error',e==='0',`${e} error`);
   }catch(e){check(res,'web-ext lint',false,String(e.stdout||e).slice(0,60));}
 
   let xpi;
   try{
-    const out=execSync(`npx web-ext build --source-dir ${EXT_PATH} --artifacts-dir /tmp/fadblock-build --overwrite-dest 2>&1`,{encoding:'utf8'});
+    const out=execSync(`npx web-ext build --source-dir ${firefoxSource} --artifacts-dir /tmp/fadblock-build --overwrite-dest 2>&1`,{encoding:'utf8'});
     const m=out.match(/Your web extension is ready: (.+\.(?:zip|xpi))/);
     xpi=m?m[1].trim():null;
     check(res,'web-ext build artifact',!!xpi,xpi?path.basename(xpi):'failed');
   }catch(e){check(res,'web-ext build',false,String(e).slice(0,60));}
 
-  const mf=JSON.parse(fs.readFileSync(path.join(EXT_PATH,'manifest.json'),'utf8'));
+  const mf=JSON.parse(fs.readFileSync(path.join(firefoxSource,'manifest.json'),'utf8'));
   check(res,'manifest_version:3',           mf.manifest_version===3);
-  check(res,'background.scripts (FF)',       Array.isArray(mf.background?.scripts));
+  check(res,'background.service_worker',     mf.background?.service_worker==='background/service-worker.js');
   check(res,'strict_min_version>=128',       parseFloat(mf.browser_specific_settings?.gecko?.strict_min_version||'0')>=128);
   check(res,'gecko id',                      !!mf.browser_specific_settings?.gecko?.id);
 
