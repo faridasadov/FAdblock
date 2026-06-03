@@ -1,9 +1,21 @@
-const STATS_KEY        = 'adblock_stats';
-const WHITELIST_KEY    = 'adblock_whitelist';
-const ENABLED_KEY      = 'adblock_enabled';
-const TAB_PREFIX       = 'tab_';
-const SITE_STATS_KEY   = 'site_stats';
+const STATS_KEY          = 'adblock_stats';
+const WHITELIST_KEY      = 'adblock_whitelist';
+const ENABLED_KEY        = 'adblock_enabled';
+const TAB_PREFIX         = 'tab_';
+const SITE_STATS_KEY     = 'site_stats';
 const CUSTOM_BLOCKED_KEY = 'custom_blocked';
+const HISTORY_KEY        = 'block_history';
+const FILTERS_META_KEY   = 'filters_meta';
+
+const FILTER_RULE_BASE   = 10000;
+const MAX_FILTER_RULES   = 4000;
+const MILESTONES = [100, 500, 1000, 5000, 10000, 50000, 100000];
+
+function fmtNum(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
+  return String(n);
+}
 
 // In-memory cache for hot-path (webRequest fires on every request)
 let _enabled   = true;
@@ -79,6 +91,10 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
   updateBadgeState(_enabled);
 
+  // Weekly filter list refresh alarm
+  chrome.alarms.create('updateFilters', { periodInMinutes: 10080 });
+  fetchAndUpdateFilters();
+
   // Context menus
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({ id: 'fb_pick',   title: 'FAdblock: Bu elementi blokla', contexts: ['all'] });
@@ -102,6 +118,43 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'toggle-adblock') await setGlobalEnabled(!_enabled);
 });
+
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === 'updateFilters') fetchAndUpdateFilters();
+});
+
+async function fetchAndUpdateFilters() {
+  try {
+    const res = await fetch(
+      'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=nohtml&showintro=0&mimetype=plaintext',
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return;
+    const text = await res.text();
+    const domains = text.split('\n')
+      .map(l => l.trim().toLowerCase())
+      .filter(l => l && !l.startsWith('#') && l.includes('.') && !l.includes(' '))
+      .slice(0, MAX_FILTER_RULES);
+
+    const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
+    const existing = await chrome.declarativeNetRequest.getDynamicRules();
+    const oldIds = existing.filter(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES).map(r => r.id);
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: oldIds,
+      addRules: domains.map((domain, i) => ({
+        id: FILTER_RULE_BASE + i,
+        priority: 1,
+        action: { type: 'block' },
+        condition: { requestDomains: [domain], resourceTypes: allTypes }
+      }))
+    });
+
+    await chrome.storage.local.set({
+      [FILTERS_META_KEY]: { updated: new Date().toISOString(), count: domains.length }
+    });
+  } catch {}
+}
 
 // Keep cache in sync when storage changes
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -199,6 +252,29 @@ async function flushStats() {
     }
     _pendingSiteStats.clear();
     await chrome.storage.local.set({ [SITE_STATS_KEY]: siteStats });
+  }
+
+  // Daily history (7-day chart)
+  const today = new Date().toDateString();
+  const hd = await chrome.storage.local.get(HISTORY_KEY);
+  const history = hd[HISTORY_KEY] || {};
+  history[today] = (history[today] || 0) + delta;
+  const days = Object.keys(history).sort((a, b) => new Date(a) - new Date(b));
+  if (days.length > 7) days.slice(0, days.length - 7).forEach(d => delete history[d]);
+  await chrome.storage.local.set({ [HISTORY_KEY]: history });
+
+  // Milestone notifications
+  const prevTotal = stats.total - delta;
+  for (const m of MILESTONES) {
+    if (prevTotal < m && stats.total >= m) {
+      chrome.notifications.create(`fb_milestone_${m}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon48.png',
+        title: 'FAdblock 🎉',
+        message: `${fmtNum(m)} reklam bloklandı!`
+      }).catch(() => {});
+      break;
+    }
   }
 }
 
@@ -332,6 +408,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         await syncCustomBlockedRules(updated);
         sendResponse({ ok: true });
       });
+      return true;
+
+    case 'GET_HISTORY':
+      chrome.storage.local.get(HISTORY_KEY)
+        .then(d => sendResponse({ history: d[HISTORY_KEY] || {} }));
+      return true;
+
+    case 'GET_FILTERS_META':
+      chrome.storage.local.get(FILTERS_META_KEY)
+        .then(d => sendResponse({ meta: d[FILTERS_META_KEY] || null }));
+      return true;
+
+    case 'UPDATE_FILTERS':
+      fetchAndUpdateFilters().then(() => sendResponse({ ok: true }));
       return true;
   }
 });

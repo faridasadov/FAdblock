@@ -53,3 +53,13 @@ input[type="text"]:focus{border-color:var(--blue)}
 .site-stat-host{flex:1;margin-left:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .site-stat-count{color:var(--red);font-weight:700;font-size:13px;flex-shrink:0}
 .selector-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;color:var(--blue)}
+
+/* 7-day chart */
+.chart-wrap{display:flex;align-items:flex-end;gap:8px;height:80px;margin-top:8px}
+.chart-col{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1}
+.chart-val{font-size:10px;color:var(--muted)}
+.chart-bar{width:100%;background:var(--red);border-radius:4px 4px 0 0;min-height:4px;transition:height .3s}
+.chart-lbl{font-size:10px;color:var(--muted)}
+
+/* Import/Export */
+.btn--secondary{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border);cursor:pointer}

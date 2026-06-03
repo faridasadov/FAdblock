@@ -52,4 +52,19 @@
     Object.defineProperty(screen, 'pixelDepth',  { get: () => 24, configurable: true });
   } catch {}
 
+  // --- WebRTC: force relay-only to prevent local IP leak ---
+  try {
+    const _OrigRTC = window.RTCPeerConnection;
+    if (_OrigRTC) {
+      function PatchedRTC(config, constraints) {
+        if (config && Array.isArray(config.iceServers)) {
+          config = Object.assign({}, config, { iceTransportPolicy: 'relay' });
+        }
+        return new _OrigRTC(config, constraints);
+      }
+      PatchedRTC.prototype = _OrigRTC.prototype;
+      Object.defineProperty(window, 'RTCPeerConnection', { value: PatchedRTC, writable: true, configurable: true });
+    }
+  } catch {}
+
 })();

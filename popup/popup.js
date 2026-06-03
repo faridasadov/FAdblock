@@ -17,6 +17,19 @@ function formatNumber(n) {
   return String(n);
 }
 
+function animateCount(el, target, duration = 550) {
+  if (!target) return;
+  const t0 = performance.now();
+  const tick = now => {
+    const p = Math.min((now - t0) / duration, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = formatNumber(Math.round(eased * target));
+    if (p < 1) requestAnimationFrame(tick);
+    else el.textContent = formatNumber(target);
+  };
+  requestAnimationFrame(tick);
+}
+
 async function init() {
   const tab    = await getActiveTab();
   const domain = getDomain(tab?.url || '');
@@ -52,9 +65,9 @@ async function init() {
     chrome.runtime.sendMessage({ type: 'GET_STATS' }),
     chrome.runtime.sendMessage({ type: 'GET_TAB_COUNT', tabId: tab?.id })
   ]);
-  $('tabCount').textContent   = formatNumber(tabRes?.count  || 0);
-  $('todayCount').textContent = formatNumber(stats?.today   || 0);
-  $('totalCount').textContent = formatNumber(stats?.total   || 0);
+  animateCount($('tabCount'),   tabRes?.count  || 0);
+  animateCount($('todayCount'), stats?.today   || 0);
+  animateCount($('totalCount'), stats?.total   || 0);
 
   // Buttons
   $('openOptions').addEventListener('click', () => chrome.runtime.openOptionsPage());

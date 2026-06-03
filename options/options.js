@@ -139,15 +139,86 @@ async function addBlocked() {
   input.value = '';
 }
 
+// --- 7-day chart ---
+function renderChart(history) {
+  const wrap = $('chartWrap');
+  wrap.innerHTML = '';
+  const days = Object.keys(history).sort((a, b) => new Date(a) - new Date(b)).slice(-7);
+  if (!days.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  const max = Math.max(...days.map(d => history[d]), 1);
+  const labels = ['B.e','Ç.a','Ç','C.a','C','Ş','B'];
+  days.forEach(day => {
+    const count = history[day];
+    const pct = Math.max(4, Math.round((count / max) * 100));
+    const d = new Date(day);
+    const col = document.createElement('div');
+    col.className = 'chart-col';
+    col.innerHTML = `
+      <span class="chart-val">${formatNumber(count)}</span>
+      <div class="chart-bar" style="height:${pct}%"></div>
+      <span class="chart-lbl">${labels[d.getDay()]}</span>`;
+    wrap.appendChild(col);
+  });
+}
+
+// --- Filter list meta ---
+async function loadFiltersMeta() {
+  const { meta } = await chrome.runtime.sendMessage({ type: 'GET_FILTERS_META' });
+  const el = $('filtersMeta');
+  if (meta) {
+    const d = new Date(meta.updated).toLocaleString();
+    el.textContent = `Son yeniləmə: ${d} · ${formatNumber(meta.count)} domen`;
+  } else {
+    el.textContent = 'Hələ yüklənməyib — "İndi yenilə" düyməsinə basın.';
+  }
+}
+
+// --- Export ---
+async function exportSettings() {
+  const [{ list: whitelist }, { list: blocked }, csData] = await Promise.all([
+    chrome.runtime.sendMessage({ type: 'GET_WHITELIST' }),
+    chrome.runtime.sendMessage({ type: 'GET_CUSTOM_BLOCKED' }),
+    chrome.storage.local.get('custom_selectors'),
+  ]);
+  const blob = new Blob([JSON.stringify({
+    version: '1.0',
+    exported_at: new Date().toISOString(),
+    whitelist,
+    custom_selectors: csData.custom_selectors || [],
+    custom_blocked: blocked,
+  }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `fadblock-settings-${Date.now()}.json`;
+  a.click();
+}
+
+// --- Import ---
+async function importSettings(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (data.whitelist)         await chrome.storage.local.set({ adblock_whitelist: data.whitelist });
+    if (data.custom_selectors)  await chrome.storage.local.set({ custom_selectors: data.custom_selectors });
+    if (data.custom_blocked) {
+      await chrome.storage.local.set({ custom_blocked: data.custom_blocked });
+      await chrome.runtime.sendMessage({ type: 'UPDATE_FILTERS' }).catch(() => {});
+    }
+    location.reload();
+  } catch { alert('Fayl oxunmadı — düzgün FAdblock JSON faylı seçin.'); }
+}
+
 // --- Init ---
 async function init() {
-  const [stats, { list: whitelist }, { stats: siteStats }, { list: blockedList }, csData] =
+  const [stats, { list: whitelist }, { stats: siteStats }, { list: blockedList }, csData, histData] =
     await Promise.all([
       chrome.runtime.sendMessage({ type: 'GET_STATS' }),
       chrome.runtime.sendMessage({ type: 'GET_WHITELIST' }),
       chrome.runtime.sendMessage({ type: 'GET_SITE_STATS' }),
       chrome.runtime.sendMessage({ type: 'GET_CUSTOM_BLOCKED' }),
       chrome.storage.local.get('custom_selectors'),
+      chrome.runtime.sendMessage({ type: 'GET_HISTORY' }),
     ]);
 
   $('totalBlocked').textContent = formatNumber(stats?.total || 0);
@@ -156,6 +227,8 @@ async function init() {
   renderSiteStats(siteStats || {});
   renderSelectors(csData.custom_selectors || []);
   renderBlockList(blockedList);
+  renderChart(histData?.history || {});
+  loadFiltersMeta();
 
   $('addDomain').addEventListener('click', addDomain);
   $('domainInput').addEventListener('keydown', e => { if (e.key === 'Enter') addDomain(); });
@@ -175,6 +248,20 @@ async function init() {
 
   $('addBlock').addEventListener('click', addBlocked);
   $('blockInput').addEventListener('keydown', e => { if (e.key === 'Enter') addBlocked(); });
+
+  $('updateFilters').addEventListener('click', async () => {
+    $('updateFilters').textContent = 'Yüklənir…';
+    $('updateFilters').disabled = true;
+    await chrome.runtime.sendMessage({ type: 'UPDATE_FILTERS' });
+    await loadFiltersMeta();
+    $('updateFilters').textContent = 'İndi yenilə';
+    $('updateFilters').disabled = false;
+  });
+
+  $('exportBtn').addEventListener('click', exportSettings);
+  $('importFile').addEventListener('change', e => {
+    if (e.target.files[0]) importSettings(e.target.files[0]);
+  });
 
   const btn = $('donateBtn');
   btn.href = PAYPAL_URL;

@@ -31,6 +31,7 @@
           </div>
         </div>
         <button class="btn btn--danger" id="resetStats">Statistikanı sıfırla</button>
+        <div class="chart-wrap" id="chartWrap" aria-label="7 günlük blok qrafiki"></div>
       </section>
 
       <!-- Whitelist -->
@@ -83,6 +84,25 @@
         <ul class="whitelist" id="blockList" aria-label="Bloklanmış domenlər">
           <li class="empty-hint" id="blockEmpty">Siyahı boşdur</li>
         </ul>
+      </section>
+
+      <!-- Filter list -->
+      <section class="card">
+        <h2>Filter siyahısı</h2>
+        <p class="hint" id="filtersMeta">Yüklənir…</p>
+        <button class="btn btn--primary" id="updateFilters">İndi yenilə</button>
+      </section>
+
+      <!-- Import / Export -->
+      <section class="card">
+        <h2>Parametrləri ixrac / idxal et</h2>
+        <p class="hint">Whitelist, xüsusi CSS filtrlər və bloklanmış domenləri JSON faylı kimi saxla və ya bərpa et.</p>
+        <div class="input-row">
+          <button class="btn btn--primary" id="exportBtn">⬇ İxrac et</button>
+          <label class="btn btn--secondary" id="importLabel">⬆ İdxal et
+            <input type="file" id="importFile" accept=".json" hidden />
+          </label>
+        </div>
       </section>
 
       <!-- Donate -->
