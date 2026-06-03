@@ -78,7 +78,15 @@
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
     if ('adblock_enabled' in changes) {
-      changes.adblock_enabled.newValue === false ? removeCosmeticCSS() : injectCosmeticCSS();
+      if (changes.adblock_enabled.newValue === false) {
+        removeCosmeticCSS();
+        applyCustomSelectors([]);
+      } else {
+        injectCosmeticCSS();
+        chrome.storage.local.get('custom_selectors', ({ custom_selectors }) => {
+          applyCustomSelectors(custom_selectors || []);
+        });
+      }
     }
     if ('custom_selectors' in changes) {
       applyCustomSelectors(changes.custom_selectors.newValue || []);

@@ -210,7 +210,9 @@ async function importSettings(file) {
     if (data.custom_selectors)  await chrome.storage.local.set({ custom_selectors: data.custom_selectors });
     if (data.custom_blocked) {
       await chrome.storage.local.set({ custom_blocked: data.custom_blocked });
-      await chrome.runtime.sendMessage({ type: 'UPDATE_FILTERS' }).catch(() => {});
+      for (const domain of data.custom_blocked) {
+        await chrome.runtime.sendMessage({ type: 'BLOCK_DOMAIN', domain }).catch(() => {});
+      }
     }
     location.reload();
   } catch { alert('Fayl oxunmadı — düzgün FAdblock JSON faylı seçin.'); }

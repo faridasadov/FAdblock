@@ -58,14 +58,6 @@ const AD_DOMAINS = new Set([
   'inspectlet.com','bounceexchange.com',
 ]);
 
-function isAdHostname(hostname) {
-  const h = hostname.toLowerCase();
-  for (const d of AD_DOMAINS) {
-    if (h === d || h.endsWith('.' + d)) return true;
-  }
-  return false;
-}
-
 // URL filters for webRequest — only fires for known ad domains (efficient)
 const AD_URL_FILTERS = [...AD_DOMAINS].flatMap(d => [
   `*://${d}/*`, `*://*.${d}/*`
@@ -91,9 +83,14 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
   updateBadgeState(_enabled);
 
-  // Weekly filter list refresh alarm
-  chrome.alarms.create('updateFilters', { periodInMinutes: 10080 });
-  fetchAndUpdateFilters();
+  // Weekly filter list refresh alarm — only create if not already set
+  chrome.alarms.get('updateFilters', existing => {
+    if (!existing) chrome.alarms.create('updateFilters', { periodInMinutes: 10080 });
+  });
+  // Fetch filters only on fresh install, not on updates
+  chrome.storage.local.get(FILTERS_META_KEY, d => {
+    if (!d[FILTERS_META_KEY]) fetchAndUpdateFilters();
+  });
 
   // Context menus
   chrome.contextMenus.removeAll(() => {
@@ -201,11 +198,14 @@ chrome.webRequest.onBeforeRequest.addListener(
   { urls: AD_URL_FILTERS }
 );
 
+const _dirtyTabs = new Set(); // tracks which tabs need session storage update
+
 function incrementStats(tabId) {
   _pendingTotal++;
   _pendingToday++;
   if (tabId > 0) {
     _tabCounts.set(tabId, (_tabCounts.get(tabId) || 0) + 1);
+    _dirtyTabs.add(tabId);
     const count = _tabCounts.get(tabId);
     chrome.action.setBadgeText({
       text: count > 999 ? '1k+' : String(count),
@@ -240,9 +240,13 @@ async function flushStats() {
   stats.today += deltaToday;
   await chrome.storage.local.set({ [STATS_KEY]: stats });
 
-  for (const [tabId, count] of _tabCounts) {
-    await chrome.storage.session?.set({ [TAB_PREFIX + tabId]: count }).catch(() => {});
+  for (const tabId of _dirtyTabs) {
+    const count = _tabCounts.get(tabId);
+    if (count !== undefined) {
+      await chrome.storage.session?.set({ [TAB_PREFIX + tabId]: count }).catch(() => {});
+    }
   }
+  _dirtyTabs.clear();
 
   if (_pendingSiteStats.size > 0) {
     const sd = await chrome.storage.local.get(SITE_STATS_KEY);
@@ -323,12 +327,13 @@ async function setGlobalEnabled(enabled) {
 // --- Whitelist sync to DNR dynamic rules ---
 async function syncWhitelistRules(list) {
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const whitelistIds = existing.filter(r => r.id >= 90000 && r.id < 100000).map(r => r.id);
   const allTypes = [
     'main_frame','sub_frame','script','stylesheet',
     'image','font','xmlhttprequest','media','websocket','other'
   ];
   await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: existing.map(r => r.id),
+    removeRuleIds: whitelistIds,
     addRules: list.map((domain, i) => ({
       id: 90000 + i,
       priority: 1000,
