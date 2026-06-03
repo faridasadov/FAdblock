@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FAdblock",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Sürətli və yüngül reklam bloker — Chrome və Firefox üçün",
   "permissions": [
     "declarativeNetRequest",
@@ -98,7 +98,9 @@
       "id": "adblock-pro@farid.dev",
       "strict_min_version": "128.0",
       "data_collection_permissions": {
-        "required": [],
+        "required": [
+          "none"
+        ],
         "optional": []
       }
     }

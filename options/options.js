@@ -57,7 +57,14 @@ function renderSiteStats(stats) {
   entries.forEach(([host, count]) => {
     const li = document.createElement('li');
     li.className = 'site-stat-row';
-    li.innerHTML = `<span class="site-stat-host">${host}</span><span class="site-stat-count">${formatNumber(count)}</span>`;
+    const hostEl = document.createElement('span');
+    hostEl.className = 'site-stat-host';
+    hostEl.textContent = host;
+    const countEl = document.createElement('span');
+    countEl.className = 'site-stat-count';
+    countEl.textContent = formatNumber(count);
+    li.appendChild(hostEl);
+    li.appendChild(countEl);
     ol.appendChild(li);
   });
 }
@@ -154,10 +161,10 @@ function renderChart(history) {
     const d = new Date(day);
     const col = document.createElement('div');
     col.className = 'chart-col';
-    col.innerHTML = `
-      <span class="chart-val">${formatNumber(count)}</span>
-      <div class="chart-bar" style="height:${pct}%"></div>
-      <span class="chart-lbl">${labels[d.getDay()]}</span>`;
+    const val = document.createElement('span'); val.className = 'chart-val'; val.textContent = formatNumber(count);
+    const bar = document.createElement('div');  bar.className = 'chart-bar';  bar.style.height = pct + '%';
+    const lbl = document.createElement('span'); lbl.className = 'chart-lbl'; lbl.textContent = labels[d.getDay()];
+    col.appendChild(val); col.appendChild(bar); col.appendChild(lbl);
     wrap.appendChild(col);
   });
 }
