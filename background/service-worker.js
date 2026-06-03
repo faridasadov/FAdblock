@@ -1,7 +1,9 @@
-const STATS_KEY   = 'adblock_stats';
-const WHITELIST_KEY = 'adblock_whitelist';
-const ENABLED_KEY = 'adblock_enabled';
-const TAB_PREFIX  = 'tab_';
+const STATS_KEY        = 'adblock_stats';
+const WHITELIST_KEY    = 'adblock_whitelist';
+const ENABLED_KEY      = 'adblock_enabled';
+const TAB_PREFIX       = 'tab_';
+const SITE_STATS_KEY   = 'site_stats';
+const CUSTOM_BLOCKED_KEY = 'custom_blocked';
 
 // In-memory cache for hot-path (webRequest fires on every request)
 let _enabled   = true;
@@ -11,7 +13,8 @@ const _tabUrls = new Map(); // tabId → hostname
 // In-memory stats counters to avoid read-modify-write race conditions
 let _pendingTotal = 0;
 let _pendingToday = 0;
-const _tabCounts  = new Map(); // tabId → count
+const _tabCounts      = new Map(); // tabId → count
+const _pendingSiteStats = new Map(); // hostname → count
 let _flushTimer   = null;
 
 // --- Domain list (kept in sync with generate-rules.js) ---
@@ -75,6 +78,29 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.storage.local.set({ [ENABLED_KEY]: true });
   }
   updateBadgeState(_enabled);
+
+  // Context menus
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({ id: 'fb_pick',   title: 'FAdblock: Bu elementi blokla', contexts: ['all'] });
+    chrome.contextMenus.create({ id: 'fb_domain', title: 'FAdblock: Bu domeini blokla',  contexts: ['all'] });
+  });
+});
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (!tab?.id) return;
+  if (info.menuItemId === 'fb_pick') {
+    chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_PICKER' }).catch(() => {});
+  } else if (info.menuItemId === 'fb_domain') {
+    const raw = info.linkUrl || info.pageUrl;
+    try {
+      const domain = new URL(raw).hostname.replace(/^www\./, '');
+      await blockCustomDomain(domain);
+    } catch {}
+  }
+});
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'toggle-adblock') await setGlobalEnabled(!_enabled);
 });
 
 // Keep cache in sync when storage changes
@@ -132,6 +158,8 @@ function incrementStats(tabId) {
       text: count > 999 ? '1k+' : String(count),
       tabId
     }).catch(() => {});
+    const host = _tabUrls.get(tabId);
+    if (host) _pendingSiteStats.set(host, (_pendingSiteStats.get(host) || 0) + 1);
   }
   scheduleFlush();
 }
@@ -162,6 +190,40 @@ async function flushStats() {
   for (const [tabId, count] of _tabCounts) {
     await chrome.storage.session?.set({ [TAB_PREFIX + tabId]: count }).catch(() => {});
   }
+
+  if (_pendingSiteStats.size > 0) {
+    const sd = await chrome.storage.local.get(SITE_STATS_KEY);
+    const siteStats = sd[SITE_STATS_KEY] || {};
+    for (const [host, cnt] of _pendingSiteStats) {
+      siteStats[host] = (siteStats[host] || 0) + cnt;
+    }
+    _pendingSiteStats.clear();
+    await chrome.storage.local.set({ [SITE_STATS_KEY]: siteStats });
+  }
+}
+
+async function blockCustomDomain(domain) {
+  const data = await chrome.storage.local.get(CUSTOM_BLOCKED_KEY);
+  const list = data[CUSTOM_BLOCKED_KEY] || [];
+  if (list.includes(domain)) return;
+  const updated = [...list, domain];
+  await chrome.storage.local.set({ [CUSTOM_BLOCKED_KEY]: updated });
+  await syncCustomBlockedRules(updated);
+}
+
+async function syncCustomBlockedRules(list) {
+  const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const blockIds = existing.filter(r => r.id >= 70000 && r.id < 80000).map(r => r.id);
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: blockIds,
+    addRules: list.map((domain, i) => ({
+      id: 70000 + i,
+      priority: 999,
+      action: { type: 'block' },
+      condition: { requestDomains: [domain], resourceTypes: allTypes }
+    }))
+  });
 }
 
 // --- Global enable / disable ---
@@ -242,6 +304,34 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       chrome.storage.local.set({
         [STATS_KEY]: { total: 0, today: 0, lastReset: new Date().toDateString() }
       }).then(() => sendResponse({ ok: true }));
+      return true;
+
+    case 'GET_SITE_STATS':
+      chrome.storage.local.get(SITE_STATS_KEY)
+        .then(d => sendResponse({ stats: d[SITE_STATS_KEY] || {} }));
+      return true;
+
+    case 'CLEAR_SITE_STATS':
+      chrome.storage.local.set({ [SITE_STATS_KEY]: {} })
+        .then(() => sendResponse({ ok: true }));
+      return true;
+
+    case 'BLOCK_DOMAIN':
+      blockCustomDomain(msg.domain).then(() => sendResponse({ ok: true }));
+      return true;
+
+    case 'GET_CUSTOM_BLOCKED':
+      chrome.storage.local.get(CUSTOM_BLOCKED_KEY)
+        .then(d => sendResponse({ list: d[CUSTOM_BLOCKED_KEY] || [] }));
+      return true;
+
+    case 'REMOVE_CUSTOM_BLOCKED':
+      chrome.storage.local.get(CUSTOM_BLOCKED_KEY).then(async d => {
+        const updated = (d[CUSTOM_BLOCKED_KEY] || []).filter(x => x !== msg.domain);
+        await chrome.storage.local.set({ [CUSTOM_BLOCKED_KEY]: updated });
+        await syncCustomBlockedRules(updated);
+        sendResponse({ ok: true });
+      });
       return true;
   }
 });

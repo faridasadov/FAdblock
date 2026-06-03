@@ -43,3 +43,13 @@ input[type="text"]:focus{border-color:var(--blue)}
 .author-label{font-size:12px;color:var(--muted)}
 .author-link{font-size:13px;color:var(--blue);text-decoration:none}
 .author-link:hover{text-decoration:underline}
+.site-stats-list{list-style:none;display:flex;flex-direction:column;gap:6px;counter-reset:rank}
+.site-stat-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;
+  font-size:13px;counter-increment:rank;
+}
+.site-stat-row::before{content:counter(rank)'.';color:var(--muted);min-width:20px;font-size:12px}
+.site-stat-host{flex:1;margin-left:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.site-stat-count{color:var(--red);font-weight:700;font-size:13px;flex-shrink:0}
+.selector-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;color:var(--blue)}

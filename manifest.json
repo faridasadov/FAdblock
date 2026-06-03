@@ -10,8 +10,16 @@
     "storage",
     "tabs",
     "activeTab",
-    "webRequest"
+    "webRequest",
+    "contextMenus"
   ],
+
+  "commands": {
+    "toggle-adblock": {
+      "suggested_key": { "default": "Alt+Shift+A" },
+      "description": "FAdblock aç/bağla"
+    }
+  },
   "host_permissions": ["<all_urls>"],
 
   "background": {
@@ -23,9 +31,21 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
+      "js": ["content/fingerprint.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["<all_urls>"],
       "js": ["content/content.js"],
       "run_at": "document_start",
       "all_frames": true
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/picker.js"],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
 

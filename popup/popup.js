@@ -61,6 +61,13 @@ async function init() {
   $('donateBtn').addEventListener('click', () => {
     chrome.tabs.create({ url: PAYPAL_URL });
   });
+  $('pickBtn').addEventListener('click', async () => {
+    const t = await getActiveTab();
+    if (t?.id) {
+      chrome.tabs.sendMessage(t.id, { type: 'ACTIVATE_PICKER' }).catch(() => {});
+      window.close();
+    }
+  });
 }
 
 init();

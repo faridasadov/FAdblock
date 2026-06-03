@@ -59,3 +59,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 }
 .btn-donate:hover{background:rgba(231,76,60,.12)}
 .btn-link:focus-visible,.btn-donate:focus-visible{outline:2px solid var(--red);border-radius:3px}
+.pick-row{display:flex}
+.btn-pick{
+  flex:1;background:none;border:1px solid rgba(52,152,219,.35);
+  color:var(--blue);font-size:12px;font-weight:600;
+  padding:6px 10px;border-radius:8px;cursor:pointer;transition:all .2s;
+}
+.btn-pick:hover{background:rgba(52,152,219,.12)}
+.btn-pick:focus-visible{outline:2px solid var(--blue);border-radius:3px}
+.container.is-off .pick-row{opacity:.4;pointer-events:none}

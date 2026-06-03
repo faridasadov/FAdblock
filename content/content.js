@@ -52,18 +52,37 @@
     }, { once: true });
   }
 
+  const CUSTOM_STYLE_ID = '__adblock_custom_css__';
+
+  function applyCustomSelectors(selectors) {
+    let el = document.getElementById(CUSTOM_STYLE_ID);
+    if (!selectors || !selectors.length) { el?.remove(); return; }
+    if (!el) {
+      el = document.createElement('style');
+      el.id = CUSTOM_STYLE_ID;
+      (document.head || document.documentElement).prepend(el);
+    }
+    el.textContent = selectors.join(',\n') + ' {\n  display: none !important;\n  visibility: hidden !important;\n}';
+  }
+
   // Check global enabled state before doing anything
-  chrome.storage.local.get('adblock_enabled', ({ adblock_enabled }) => {
+  chrome.storage.local.get(['adblock_enabled', 'custom_selectors'], ({ adblock_enabled, custom_selectors }) => {
     if (adblock_enabled === false) return;
     injectCosmeticCSS();
+    applyCustomSelectors(custom_selectors || []);
     startObserver();
     if (location.hostname.includes('youtube.com')) setupYouTubeAdSkip();
   });
 
-  // React to global toggle changes in real time
+  // React to global toggle and custom selector changes in real time
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || !('adblock_enabled' in changes)) return;
-    changes.adblock_enabled.newValue === false ? removeCosmeticCSS() : injectCosmeticCSS();
+    if (area !== 'local') return;
+    if ('adblock_enabled' in changes) {
+      changes.adblock_enabled.newValue === false ? removeCosmeticCSS() : injectCosmeticCSS();
+    }
+    if ('custom_selectors' in changes) {
+      applyCustomSelectors(changes.custom_selectors.newValue || []);
+    }
   });
 
   // --- YouTube ad handling ---

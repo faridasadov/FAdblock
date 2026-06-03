@@ -47,6 +47,44 @@
         </ul>
       </section>
 
+      <!-- Per-site stats -->
+      <section class="card">
+        <h2>Sayt üzrə statistika</h2>
+        <p class="hint">Ən çox reklam bloklanan saytlar (top 10).</p>
+        <ol class="site-stats-list" id="siteStatsList">
+          <li class="empty-hint" id="siteStatsEmpty">Hələ məlumat yoxdur</li>
+        </ol>
+        <button class="btn btn--danger" id="clearSiteStats">Sayt statistikasını sıfırla</button>
+      </section>
+
+      <!-- Custom CSS selectors -->
+      <section class="card">
+        <h2>Xüsusi CSS filtrlər</h2>
+        <p class="hint">Öz CSS selectorlarınızı əlavə edin. Həmin elementlər bütün səhifələrdə gizlədilir.</p>
+        <div class="input-row">
+          <input type="text" id="selectorInput" placeholder=".banner-ad, #sidebar"
+            aria-label="CSS selector" autocomplete="off" spellcheck="false" />
+          <button class="btn btn--primary" id="addSelector">Əlavə et</button>
+        </div>
+        <ul class="whitelist" id="selectorList" aria-label="Xüsusi CSS selectorlar">
+          <li class="empty-hint" id="selectorEmpty">Siyahı boşdur</li>
+        </ul>
+      </section>
+
+      <!-- Custom blocked domains -->
+      <section class="card">
+        <h2>Bloklanmış domenlər</h2>
+        <p class="hint">Kontekst menyusundan və ya manual əlavə edilmiş blok siyahısı.</p>
+        <div class="input-row">
+          <input type="text" id="blockInput" placeholder="example.com"
+            aria-label="Bloklanacaq domen" autocomplete="off" spellcheck="false" />
+          <button class="btn btn--primary" id="addBlock">Əlavə et</button>
+        </div>
+        <ul class="whitelist" id="blockList" aria-label="Bloklanmış domenlər">
+          <li class="empty-hint" id="blockEmpty">Siyahı boşdur</li>
+        </ul>
+      </section>
+
       <!-- Donate -->
       <section class="card card--donate">
         <h2>♥ Layihəni dəstəklə</h2>
