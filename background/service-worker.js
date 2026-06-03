@@ -143,7 +143,7 @@ async function fetchAndUpdateFilters() {
         id: FILTER_RULE_BASE + i,
         priority: 1,
         action: { type: 'block' },
-        condition: { requestDomains: [domain], resourceTypes: allTypes }
+        condition: { urlFilter: `||${domain}^`, resourceTypes: allTypes }
       }))
     });
 
@@ -301,7 +301,7 @@ async function syncCustomBlockedRules(list) {
       id: 70000 + i,
       priority: 999,
       action: { type: 'block' },
-      condition: { requestDomains: [domain], resourceTypes: allTypes }
+      condition: { urlFilter: `||${domain}^`, resourceTypes: allTypes }
     }))
   });
 }

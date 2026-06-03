@@ -104,9 +104,9 @@ async function testFirefox() {
   let xpi;
   try{
     const out=execSync(`npx web-ext build --source-dir ${EXT_PATH} --artifacts-dir /tmp/fadblock-build --overwrite-dest 2>&1`,{encoding:'utf8'});
-    const m=out.match(/Your web extension is ready: (.+\.zip)/);
+    const m=out.match(/Your web extension is ready: (.+\.(?:zip|xpi))/);
     xpi=m?m[1].trim():null;
-    check(res,'web-ext build (XPI)',!!xpi,xpi?path.basename(xpi):'failed');
+    check(res,'web-ext build artifact',!!xpi,xpi?path.basename(xpi):'failed');
   }catch(e){check(res,'web-ext build',false,String(e).slice(0,60));}
 
   const mf=JSON.parse(fs.readFileSync(path.join(EXT_PATH,'manifest.json'),'utf8'));
@@ -123,7 +123,7 @@ async function testFirefox() {
   check(res,`rules.json ${rules.length} qayda`, rules.length>=90);
 
   console.log(`\n  ${res.filter(Boolean).length}/${res.length} test keçdi`);
-  if(xpi) console.log(`  XPI: ${xpi}`);
+  if(xpi) console.log(`  Artifact: ${xpi}`);
   return res;
 }
 

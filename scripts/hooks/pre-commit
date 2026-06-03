@@ -7,6 +7,7 @@ const { execSync } = require('child_process');
 
 const root     = path.resolve(__dirname, '../../');
 const manifest = path.join(root, 'manifest.json');
+const pkg      = path.join(root, 'package.json');
 const readme   = path.join(root, 'README.md');
 
 const m    = JSON.parse(fs.readFileSync(manifest, 'utf8'));
@@ -17,13 +18,22 @@ const next = `${major}.${minor}.${patch + 1}`;
 m.version = next;
 fs.writeFileSync(manifest, JSON.stringify(m, null, 2) + '\n');
 
-if (fs.existsSync(readme)) {
-  const r = fs.readFileSync(readme, 'utf8');
-  fs.writeFileSync(readme, r.replace(
-    /version-[\d.]+-red/,
-    `version-${next}-red`
-  ));
+if (fs.existsSync(pkg)) {
+  const p = JSON.parse(fs.readFileSync(pkg, 'utf8'));
+  p.version = next;
+  fs.writeFileSync(pkg, JSON.stringify(p, null, 2) + '\n');
 }
 
-execSync('git add manifest.json README.md', { cwd: root });
+if (fs.existsSync(readme)) {
+  const r = fs.readFileSync(readme, 'utf8');
+  const updated = r
+    .replace(/version-[\d.]+-red/, `version-${next}-red`)
+    .replace(
+      /npm run pack:firefox\s+# .*/g,
+      'npm run pack:firefox         # web-ext ilə dist qovluğuna Firefox artifact yaradır'
+    );
+  fs.writeFileSync(readme, updated);
+}
+
+execSync('git add manifest.json package.json README.md', { cwd: root });
 process.stdout.write(`[version] ${prev} → ${next}\n`);
