@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "FAdblock",
-  "version": "1.0.15",
-  "description": "Sürətli və yüngül reklam bloker — Firefox üçün",
+  "name": "__MSG_extName__",
+  "version": "1.0.19",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "permissions": [
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
@@ -19,7 +20,7 @@
       "suggested_key": {
         "default": "Alt+Shift+A"
       },
-      "description": "FAdblock aç/bağla"
+      "description": "__MSG_toggleAdblockCommand__"
     }
   },
   "host_permissions": [
@@ -72,7 +73,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "FAdblock"
+    "default_title": "__MSG_extName__"
   },
   "options_ui": {
     "page": "options/options.html",

@@ -1,3 +1,5 @@
+import { applyI18n, t } from '../common/i18n.js';
+
 const PAYPAL_URL = 'https://www.paypal.com/donate/?hosted_button_id=Z79A28XHU8L7S';
 const $ = id => document.getElementById(id);
 
@@ -23,7 +25,7 @@ function renderWhitelist(list) {
     const btn = document.createElement('button');
     btn.className = 'remove-btn';
     btn.textContent = '×';
-    btn.setAttribute('aria-label', `${domain} silinsin`);
+    btn.setAttribute('aria-label', t('removeDomainAria', [domain]));
     btn.addEventListener('click', () => removeDomain(domain));
     li.appendChild(btn);
     ul.appendChild(li);
@@ -82,7 +84,7 @@ function renderSelectors(list) {
     const btn = document.createElement('button');
     btn.className = 'remove-btn';
     btn.textContent = '×';
-    btn.setAttribute('aria-label', `${sel} silinsin`);
+    btn.setAttribute('aria-label', t('removeSelectorAria', [sel]));
     btn.addEventListener('click', () => removeSelector(sel));
     li.appendChild(span);
     li.appendChild(btn);
@@ -121,7 +123,7 @@ function renderBlockList(list) {
     const btn = document.createElement('button');
     btn.className = 'remove-btn';
     btn.textContent = '×';
-    btn.setAttribute('aria-label', `${domain} silinsin`);
+    btn.setAttribute('aria-label', t('removeBlockedAria', [domain]));
     btn.addEventListener('click', () => removeBlocked(domain));
     li.appendChild(btn);
     ul.appendChild(li);
@@ -154,7 +156,15 @@ function renderChart(history) {
   if (!days.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   const max = Math.max(...days.map(d => history[d]), 1);
-  const labels = ['B.e','Ç.a','Ç','C.a','C','Ş','B'];
+  const labels = [
+    t('chartDay0'),
+    t('chartDay1'),
+    t('chartDay2'),
+    t('chartDay3'),
+    t('chartDay4'),
+    t('chartDay5'),
+    t('chartDay6')
+  ];
   days.forEach(day => {
     const count = history[day];
     const pct = Math.max(4, Math.round((count / max) * 100));
@@ -175,9 +185,9 @@ async function loadFiltersMeta() {
   const el = $('filtersMeta');
   if (meta) {
     const d = new Date(meta.updated).toLocaleString();
-    el.textContent = `Son yeniləmə: ${d} · ${formatNumber(meta.count)} domen`;
+    el.textContent = t('optionsFiltersMeta', [d, formatNumber(meta.count)]);
   } else {
-    el.textContent = 'Hələ yüklənməyib — "İndi yenilə" düyməsinə basın.';
+    el.textContent = t('optionsFiltersEmpty');
   }
 }
 
@@ -215,11 +225,14 @@ async function importSettings(file) {
       }
     }
     location.reload();
-  } catch { alert('Fayl oxunmadı — düzgün FAdblock JSON faylı seçin.'); }
+  } catch { alert(t('importError')); }
 }
 
 // --- Init ---
 async function init() {
+  applyI18n();
+  document.title = t('optionsPageTitle');
+
   const [stats, { list: whitelist }, { stats: siteStats }, { list: blockedList }, csData, histData] =
     await Promise.all([
       chrome.runtime.sendMessage({ type: 'GET_STATS' }),
@@ -259,11 +272,11 @@ async function init() {
   $('blockInput').addEventListener('keydown', e => { if (e.key === 'Enter') addBlocked(); });
 
   $('updateFilters').addEventListener('click', async () => {
-    $('updateFilters').textContent = 'Yüklənir…';
+    $('updateFilters').textContent = t('optionsFiltersUpdating');
     $('updateFilters').disabled = true;
     await chrome.runtime.sendMessage({ type: 'UPDATE_FILTERS' });
     await loadFiltersMeta();
-    $('updateFilters').textContent = 'İndi yenilə';
+    $('updateFilters').textContent = t('optionsFiltersUpdate');
     $('updateFilters').disabled = false;
   });
 

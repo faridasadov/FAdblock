@@ -2,6 +2,7 @@
   'use strict';
 
   const STYLE_ID = '__adblock_pro_css__';
+  const YT_STYLE_ID = '__fadblock_youtube_css__';
 
   const COSMETIC_SELECTORS = [
     '.adsbygoogle', 'ins.adsbygoogle',
@@ -41,6 +42,7 @@
 
   function removeCosmeticCSS() {
     document.getElementById(STYLE_ID)?.remove();
+    document.getElementById(YT_STYLE_ID)?.remove();
   }
 
   function startObserver() {
@@ -71,7 +73,7 @@
     injectCosmeticCSS();
     applyCustomSelectors(custom_selectors || []);
     startObserver();
-    if (location.hostname.includes('youtube.com')) setupYouTubeAdSkip();
+    if (location.hostname.includes('youtube.com')) setupYouTubeAdBypass();
   });
 
   // React to global toggle and custom selector changes in real time
@@ -86,6 +88,7 @@
         chrome.storage.local.get('custom_selectors', ({ custom_selectors }) => {
           applyCustomSelectors(custom_selectors || []);
         });
+        if (location.hostname.includes('youtube.com')) setupYouTubeAdBypass();
       }
     }
     if ('custom_selectors' in changes) {
@@ -94,12 +97,91 @@
   });
 
   // --- YouTube ad handling ---
-  function setupYouTubeAdSkip() {
+  function setupYouTubeAdBypass() {
     let timer = null;
+    let observer = null;
+
+    function injectYouTubeCSS() {
+      if (document.getElementById(YT_STYLE_ID)) return;
+      const style = document.createElement('style');
+      style.id = YT_STYLE_ID;
+      style.textContent = `
+        ytd-enforcement-message-view-model,
+        yt-playability-error-supported-renderers,
+        .yt-playability-error-supported-renderers,
+        .ytd-enforcement-message-view-model,
+        .ytd-popup-container:has(ytd-enforcement-message-view-model) {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+      `;
+      (document.head || document.documentElement).prepend(style);
+    }
+
+    function looksLikeYouTubeAntiAdblock(el) {
+      const text = (el?.textContent || '').toLowerCase();
+      return [
+        'ad blockers violate youtube',
+        'ad blockers are not allowed on youtube',
+        'disable your ad blocker',
+        'allow youtube ads',
+        'youtube premium',
+        'блокировщики рекламы нарушают условия',
+        'отключите блокировщик рекламы',
+        'engelleyicinizi kapatın',
+        'reklam engelleyici',
+        'bloklayıcını söndür',
+        'reklam blokeri'
+      ].some((needle) => text.includes(needle));
+    }
+
+    function clearYouTubeEnforcement() {
+      injectYouTubeCSS();
+
+      const candidates = [
+        ...document.querySelectorAll('ytd-enforcement-message-view-model'),
+        ...document.querySelectorAll('yt-playability-error-supported-renderers'),
+        ...document.querySelectorAll('tp-yt-paper-dialog'),
+        ...document.querySelectorAll('ytd-popup-container'),
+        ...document.querySelectorAll('ytd-watch-flexy[player-unavailable]'),
+        ...document.querySelectorAll('ytmusic-you-there-renderer')
+      ];
+
+      candidates.forEach((el) => {
+        if (!looksLikeYouTubeAntiAdblock(el) &&
+            !el.querySelector?.('ytd-enforcement-message-view-model, yt-playability-error-supported-renderers')) {
+          return;
+        }
+        el.remove?.();
+        el.setAttribute?.('hidden', 'hidden');
+        el.style?.setProperty('display', 'none', 'important');
+      });
+
+      document.body?.style?.removeProperty('overflow');
+      document.documentElement?.style?.removeProperty('overflow');
+
+      const player = document.querySelector('#movie_player, .html5-video-player');
+      player?.classList.remove('ad-showing', 'ytp-hide-info-bar');
+      player?.removeAttribute('style');
+
+      const video = document.querySelector('video');
+      if (video) {
+        if (video.playbackRate > 2 && !document.querySelector('.ad-showing')) {
+          video.playbackRate = 1;
+        }
+        video.muted = false;
+        video.play().catch(() => {});
+      }
+
+      document.querySelector('yt-playability-error-supported-renderers')?.remove();
+    }
 
     function startTick() {
       if (timer) clearInterval(timer);
       timer = setInterval(() => {
+        clearYouTubeEnforcement();
         const skipBtn = document.querySelector(
           '.ytp-skip-ad-button, .ytp-ad-skip-button-container button'
         );
@@ -114,8 +196,14 @@
     }
 
     startTick();
+    observer?.disconnect();
+    observer = new MutationObserver(() => clearYouTubeEnforcement());
+    observer.observe(document.documentElement, { childList: true, subtree: true });
     // YouTube uses client-side navigation — restart on each page transition
     document.addEventListener('yt-navigate-finish', startTick);
-    window.addEventListener('unload', () => clearInterval(timer), { once: true });
+    window.addEventListener('unload', () => {
+      clearInterval(timer);
+      observer?.disconnect();
+    }, { once: true });
   }
 })();

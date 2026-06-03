@@ -1,3 +1,5 @@
+import { applyI18n, t } from '../common/i18n.js';
+
 const PAYPAL_URL = 'https://www.paypal.com/donate/?hosted_button_id=Z79A28XHU8L7S';
 
 const $ = id => document.getElementById(id);
@@ -31,6 +33,9 @@ function animateCount(el, target, duration = 550) {
 }
 
 async function init() {
+  applyI18n();
+  document.title = 'FAdblock';
+
   const tab    = await getActiveTab();
   const domain = getDomain(tab?.url || '');
 
@@ -46,7 +51,7 @@ async function init() {
   });
 
   // Site domain
-  $('siteDomain').textContent = domain || 'Sistem səhifəsi';
+  $('siteDomain').textContent = domain || t('popupSystemPage');
 
   if (domain) {
     const { whitelisted } = await chrome.runtime.sendMessage({ type: 'IS_WHITELISTED', domain });

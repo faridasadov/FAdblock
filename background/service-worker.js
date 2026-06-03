@@ -11,6 +11,10 @@ const FILTER_RULE_BASE   = 10000;
 const MAX_FILTER_RULES   = 4000;
 const MILESTONES = [100, 500, 1000, 5000, 10000, 50000, 100000];
 
+function t(key, substitutions) {
+  return chrome.i18n.getMessage(key, substitutions) || key;
+}
+
 function fmtNum(n) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
@@ -94,8 +98,8 @@ chrome.runtime.onInstalled.addListener(async () => {
 
   // Context menus
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: 'fb_pick',   title: 'FAdblock: Bu elementi blokla', contexts: ['all'] });
-    chrome.contextMenus.create({ id: 'fb_domain', title: 'FAdblock: Bu domeini blokla',  contexts: ['all'] });
+    chrome.contextMenus.create({ id: 'fb_pick',   title: t('contextMenuPick'), contexts: ['all'] });
+    chrome.contextMenus.create({ id: 'fb_domain', title: t('contextMenuDomain'),  contexts: ['all'] });
   });
 });
 
@@ -163,12 +167,30 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // --- Badge ---
 function updateBadgeState(enabled) {
   chrome.action.setBadgeBackgroundColor({ color: enabled ? '#e74c3c' : '#888' });
-  chrome.action.setTitle({ title: enabled ? 'FAdblock — Aktiv' : 'FAdblock — Söndürülüb' });
+  chrome.action.setTitle({ title: enabled ? t('actionTitleActive') : t('actionTitleDisabled') });
   if (!enabled) {
     chrome.tabs.query({}).then(tabs => {
       tabs.forEach(t => chrome.action.setBadgeText({ text: 'OFF', tabId: t.id }).catch(() => {}));
     });
   }
+}
+
+function refreshBadgesForAllTabs() {
+  chrome.tabs.query({}).then(tabs => {
+    tabs.forEach((tab) => {
+      if (!tab.id) return;
+      if (!_enabled) {
+        chrome.action.setBadgeText({ text: 'OFF', tabId: tab.id }).catch(() => {});
+        return;
+      }
+
+      const count = _tabCounts.get(tab.id) || 0;
+      chrome.action.setBadgeText({
+        text: count > 0 ? (count > 999 ? '1k+' : String(count)) : '',
+        tabId: tab.id
+      }).catch(() => {});
+    });
+  });
 }
 
 // --- Tab URL tracking ---
@@ -274,8 +296,8 @@ async function flushStats() {
       chrome.notifications.create(`fb_milestone_${m}`, {
         type: 'basic',
         iconUrl: 'icons/icon48.png',
-        title: 'FAdblock 🎉',
-        message: `${fmtNum(m)} reklam bloklandı!`
+        title: t('milestoneTitle'),
+        message: t('milestoneMessage', [fmtNum(m)])
       }).catch(() => {});
       break;
     }
@@ -311,6 +333,7 @@ async function setGlobalEnabled(enabled) {
   _enabled = enabled;
   await chrome.storage.local.set({ [ENABLED_KEY]: enabled });
   updateBadgeState(enabled);
+  refreshBadgesForAllTabs();
   try {
     if (enabled) {
       await chrome.declarativeNetRequest.updateEnabledRulesets({

@@ -2,6 +2,7 @@
   'use strict';
 
   const HIGHLIGHT = '__fb_pick__';
+  const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions) || key;
   let active = false;
   let lastEl = null;
 
@@ -19,7 +20,7 @@
     document.documentElement.appendChild(style);
     bar = document.createElement('div');
     bar.id = '__fb_bar__';
-    bar.textContent = 'FAdblock: gizlətmək istədiyiniz elementi seçin — ESC ilə çıxın';
+    bar.textContent = t('pickerBarText');
     document.documentElement.appendChild(bar);
     document.addEventListener('mouseover', onOver, true);
     document.addEventListener('mouseout',  onOut,  true);
@@ -63,7 +64,7 @@
     preview.textContent = `${selector}{display:none!important}`;
     document.head.appendChild(preview);
 
-    if (window.confirm(`FAdblock: bu elementi gizlət?\n\n${selector}`)) {
+    if (window.confirm(t('pickerConfirm', [selector]))) {
       chrome.storage.local.get('custom_selectors', ({ custom_selectors }) => {
         const list = custom_selectors || [];
         if (!list.includes(selector)) {

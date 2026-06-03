@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="az">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>FAdblock — Parametrlər</title>
+  <title>FAdblock - Settings</title>
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
@@ -12,94 +12,94 @@
       <img src="../icons/icon48.png" alt="" aria-hidden="true" class="header-icon" />
       <div>
         <h1>FAdblock</h1>
-        <p class="subtitle">Parametrlər</p>
+        <p class="subtitle" data-i18n="optionsSubtitle">Parametrlər</p>
       </div>
     </header>
 
     <main>
       <!-- Stats -->
       <section class="card">
-        <h2>Statistika</h2>
+        <h2 data-i18n="optionsStatsTitle">Statistika</h2>
         <div class="stats-row">
           <div class="stat">
             <span class="stat-n" id="totalBlocked">0</span>
-            <span class="stat-l">Cəmi bloklandı</span>
+            <span class="stat-l" data-i18n="optionsTotalBlocked">Cəmi bloklandı</span>
           </div>
           <div class="stat">
             <span class="stat-n" id="todayBlocked">0</span>
-            <span class="stat-l">Bu gün</span>
+            <span class="stat-l" data-i18n="optionsToday">Bu gün</span>
           </div>
         </div>
-        <button class="btn btn--danger" id="resetStats">Statistikanı sıfırla</button>
-        <div class="chart-wrap" id="chartWrap" aria-label="7 günlük blok qrafiki"></div>
+        <button class="btn btn--danger" id="resetStats" data-i18n="optionsResetStats">Statistikanı sıfırla</button>
+        <div class="chart-wrap" id="chartWrap" data-i18n-aria-label="optionsChartAria" aria-label="7 günlük blok qrafiki"></div>
       </section>
 
       <!-- Whitelist -->
       <section class="card">
-        <h2>İcazə verilən saytlar</h2>
-        <p class="hint">Bu saytlarda bloklama işləmir.</p>
+        <h2 data-i18n="optionsWhitelistTitle">İcazə verilən saytlar</h2>
+        <p class="hint" data-i18n="optionsWhitelistHint">Bu saytlarda bloklama işləmir.</p>
         <div class="input-row">
           <input type="text" id="domainInput" placeholder="example.com"
-            aria-label="Sayt domen adı" autocomplete="off" spellcheck="false" />
-          <button class="btn btn--primary" id="addDomain">Əlavə et</button>
+            data-i18n-aria-label="optionsDomainInputAria" aria-label="Sayt domen adı" autocomplete="off" spellcheck="false" />
+          <button class="btn btn--primary" id="addDomain" data-i18n="commonAdd">Əlavə et</button>
         </div>
-        <ul class="whitelist" id="whitelistEl" aria-label="İcazə verilən saytlar siyahısı">
-          <li class="empty-hint" id="emptyHint">Siyahı boşdur</li>
+        <ul class="whitelist" id="whitelistEl" data-i18n-aria-label="optionsWhitelistAria" aria-label="İcazə verilən saytlar siyahısı">
+          <li class="empty-hint" id="emptyHint" data-i18n="commonEmptyList">Siyahı boşdur</li>
         </ul>
       </section>
 
       <!-- Per-site stats -->
       <section class="card">
-        <h2>Sayt üzrə statistika</h2>
-        <p class="hint">Ən çox reklam bloklanan saytlar (top 10).</p>
+        <h2 data-i18n="optionsSiteStatsTitle">Sayt üzrə statistika</h2>
+        <p class="hint" data-i18n="optionsSiteStatsHint">Ən çox reklam bloklanan saytlar (top 10).</p>
         <ol class="site-stats-list" id="siteStatsList">
-          <li class="empty-hint" id="siteStatsEmpty">Hələ məlumat yoxdur</li>
+          <li class="empty-hint" id="siteStatsEmpty" data-i18n="optionsSiteStatsEmpty">Hələ məlumat yoxdur</li>
         </ol>
-        <button class="btn btn--danger" id="clearSiteStats">Sayt statistikasını sıfırla</button>
+        <button class="btn btn--danger" id="clearSiteStats" data-i18n="optionsClearSiteStats">Sayt statistikasını sıfırla</button>
       </section>
 
       <!-- Custom CSS selectors -->
       <section class="card">
-        <h2>Xüsusi CSS filtrlər</h2>
-        <p class="hint">Öz CSS selectorlarınızı əlavə edin. Həmin elementlər bütün səhifələrdə gizlədilir.</p>
+        <h2 data-i18n="optionsSelectorsTitle">Xüsusi CSS filtrlər</h2>
+        <p class="hint" data-i18n="optionsSelectorsHint">Öz CSS selectorlarınızı əlavə edin. Həmin elementlər bütün səhifələrdə gizlədilir.</p>
         <div class="input-row">
           <input type="text" id="selectorInput" placeholder=".banner-ad, #sidebar"
-            aria-label="CSS selector" autocomplete="off" spellcheck="false" />
-          <button class="btn btn--primary" id="addSelector">Əlavə et</button>
+            data-i18n-aria-label="optionsSelectorInputAria" aria-label="CSS selector" autocomplete="off" spellcheck="false" />
+          <button class="btn btn--primary" id="addSelector" data-i18n="commonAdd">Əlavə et</button>
         </div>
-        <ul class="whitelist" id="selectorList" aria-label="Xüsusi CSS selectorlar">
-          <li class="empty-hint" id="selectorEmpty">Siyahı boşdur</li>
+        <ul class="whitelist" id="selectorList" data-i18n-aria-label="optionsSelectorListAria" aria-label="Xüsusi CSS selectorlar">
+          <li class="empty-hint" id="selectorEmpty" data-i18n="commonEmptyList">Siyahı boşdur</li>
         </ul>
       </section>
 
       <!-- Custom blocked domains -->
       <section class="card">
-        <h2>Bloklanmış domenlər</h2>
-        <p class="hint">Kontekst menyusundan və ya manual əlavə edilmiş blok siyahısı.</p>
+        <h2 data-i18n="optionsBlockedTitle">Bloklanmış domenlər</h2>
+        <p class="hint" data-i18n="optionsBlockedHint">Kontekst menyusundan və ya manual əlavə edilmiş blok siyahısı.</p>
         <div class="input-row">
           <input type="text" id="blockInput" placeholder="example.com"
-            aria-label="Bloklanacaq domen" autocomplete="off" spellcheck="false" />
-          <button class="btn btn--primary" id="addBlock">Əlavə et</button>
+            data-i18n-aria-label="optionsBlockInputAria" aria-label="Bloklanacaq domen" autocomplete="off" spellcheck="false" />
+          <button class="btn btn--primary" id="addBlock" data-i18n="commonAdd">Əlavə et</button>
         </div>
-        <ul class="whitelist" id="blockList" aria-label="Bloklanmış domenlər">
-          <li class="empty-hint" id="blockEmpty">Siyahı boşdur</li>
+        <ul class="whitelist" id="blockList" data-i18n-aria-label="optionsBlockedListAria" aria-label="Bloklanmış domenlər">
+          <li class="empty-hint" id="blockEmpty" data-i18n="commonEmptyList">Siyahı boşdur</li>
         </ul>
       </section>
 
       <!-- Filter list -->
       <section class="card">
-        <h2>Filter siyahısı</h2>
-        <p class="hint" id="filtersMeta">Yüklənir…</p>
-        <button class="btn btn--primary" id="updateFilters">İndi yenilə</button>
+        <h2 data-i18n="optionsFiltersTitle">Filter siyahısı</h2>
+        <p class="hint" id="filtersMeta" data-i18n="optionsFiltersLoading">Yüklənir...</p>
+        <button class="btn btn--primary" id="updateFilters" data-i18n="optionsFiltersUpdate">İndi yenilə</button>
       </section>
 
       <!-- Import / Export -->
       <section class="card">
-        <h2>Parametrləri ixrac / idxal et</h2>
-        <p class="hint">Whitelist, xüsusi CSS filtrlər və bloklanmış domenləri JSON faylı kimi saxla və ya bərpa et.</p>
+        <h2 data-i18n="optionsImportExportTitle">Parametrləri ixrac / idxal et</h2>
+        <p class="hint" data-i18n="optionsImportExportHint">Whitelist, xüsusi CSS filtrlər və bloklanmış domenləri JSON faylı kimi saxla və ya bərpa et.</p>
         <div class="input-row">
-          <button class="btn btn--primary" id="exportBtn">⬇ İxrac et</button>
-          <label class="btn btn--secondary" id="importLabel">⬆ İdxal et
+          <button class="btn btn--primary" id="exportBtn" data-i18n="optionsExport">⬇ İxrac et</button>
+          <label class="btn btn--secondary" id="importLabel"><span data-i18n="optionsImport">⬆ İdxal et</span>
             <input type="file" id="importFile" accept=".json" hidden />
           </label>
         </div>
@@ -107,22 +107,21 @@
 
       <!-- Donate -->
       <section class="card card--donate">
-        <h2>♥ Layihəni dəstəklə</h2>
-        <p>FAdblock pulsuzdur və həmişə pulsuz qalacaq. Bəyəndinsə, bir qəhvə al!</p>
+        <h2 data-i18n="optionsDonateTitle">♥ Layihəni dəstəklə</h2>
+        <p data-i18n="optionsDonateText">FAdblock pulsuzdur və həmişə pulsuz qalacaq. Bəyəndinsə, bir qəhvə al!</p>
         <a class="btn btn--paypal" id="donateBtn" href="#" target="_blank">
-          PayPal ilə dəstəklə
+          <span data-i18n="optionsDonatePaypal">PayPal ilə dəstəklə</span>
         </a>
       </section>
 
       <!-- About / Attribution -->
       <section class="card card--about">
-        <h2>Haqqında</h2>
+        <h2 data-i18n="optionsAboutTitle">Haqqında</h2>
         <p>
-          <strong>FAdblock</strong> — Chrome və Firefox üçün açıq mənbəli reklam bloker.<br />
-          Manifest V3 · declarativeNetRequest · Kosmetik filtrlər · YouTube ad-skip
+          <span data-i18n="optionsAboutText">FAdblock Chrome və Firefox üçün açıq mənbəli reklam blokeridir. Manifest V3 · declarativeNetRequest · Kosmetik filtrlər · YouTube ad-skip</span>
         </p>
         <div class="author-row">
-          <span class="author-label">Müəllif</span>
+          <span class="author-label" data-i18n="optionsAuthorLabel">Müəllif</span>
           <a class="author-link" href="https://github.com/faridasadov" target="_blank">
             github.com/faridasadov
           </a>

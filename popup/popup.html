@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="az">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>FAdblock</title>
@@ -12,7 +12,7 @@
         <img src="../icons/icon32.png" alt="" aria-hidden="true" class="logo-img" />
         <span class="logo-text">FAdblock</span>
       </div>
-      <label class="toggle" aria-label="Bütün bloklamanı aç/bağla">
+      <label class="toggle" data-i18n-aria-label="popupGlobalToggleLabel">
         <input type="checkbox" id="globalToggle" checked />
         <span class="slider"></span>
       </label>
@@ -20,7 +20,7 @@
 
     <div class="site-row" id="siteRow">
       <span id="siteDomain" class="domain">—</span>
-      <label class="toggle toggle--sm" aria-label="Bu sayt üçün aç/bağla">
+      <label class="toggle toggle--sm" data-i18n-aria-label="popupSiteToggleLabel">
         <input type="checkbox" id="siteToggle" checked />
         <span class="slider"></span>
       </label>
@@ -29,25 +29,25 @@
     <div class="stats-grid">
       <div class="stat-card">
         <span class="stat-number" id="tabCount">0</span>
-        <span class="stat-label">Bu səhifədə</span>
+        <span class="stat-label" data-i18n="popupStatTab">Bu səhifədə</span>
       </div>
       <div class="stat-card">
         <span class="stat-number" id="todayCount">0</span>
-        <span class="stat-label">Bu gün</span>
+        <span class="stat-label" data-i18n="popupStatToday">Bu gün</span>
       </div>
       <div class="stat-card">
         <span class="stat-number" id="totalCount">0</span>
-        <span class="stat-label">Cəmi</span>
+        <span class="stat-label" data-i18n="popupStatTotal">Cəmi</span>
       </div>
     </div>
 
     <div class="pick-row">
-      <button class="btn-pick" id="pickBtn">⊙ Element seç</button>
+      <button class="btn-pick" id="pickBtn" data-i18n="popupPickButton">⊙ Element seç</button>
     </div>
 
     <footer class="footer">
-      <button class="btn-link" id="openOptions">Parametrlər</button>
-      <button class="btn-donate" id="donateBtn">♥ Dəstəklə</button>
+      <button class="btn-link" id="openOptions" data-i18n="popupOpenOptions">Parametrlər</button>
+      <button class="btn-donate" id="donateBtn" data-i18n="popupDonate">♥ Dəstəklə</button>
     </footer>
   </div>
   <script src="popup.js" type="module"></script>
