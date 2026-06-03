@@ -1,0 +1,29 @@
+#!/usr/bin/env node
+// Auto-bump patch version on every commit
+
+const fs   = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+const root     = path.resolve(__dirname, '../../');
+const manifest = path.join(root, 'manifest.json');
+const readme   = path.join(root, 'README.md');
+
+const m    = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+const prev = m.version;
+const [major, minor, patch] = prev.split('.').map(Number);
+const next = `${major}.${minor}.${patch + 1}`;
+
+m.version = next;
+fs.writeFileSync(manifest, JSON.stringify(m, null, 2) + '\n');
+
+if (fs.existsSync(readme)) {
+  const r = fs.readFileSync(readme, 'utf8');
+  fs.writeFileSync(readme, r.replace(
+    /version-[\d.]+-red/,
+    `version-${next}-red`
+  ));
+}
+
+execSync('git add manifest.json README.md', { cwd: root });
+process.stdout.write(`[version] ${prev} → ${next}\n`);

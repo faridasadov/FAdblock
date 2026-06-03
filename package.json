@@ -4,6 +4,7 @@
   "description": "FAdblock — Chrome ve Firefox ucun ad blocker extension",
   "private": true,
   "scripts": {
+    "prepare": "cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit",
     "generate:rules": "node scripts/generate-rules.js",
     "generate:icons": "node scripts/generate-icons.js",
     "generate": "npm run generate:rules && npm run generate:icons",
