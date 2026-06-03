@@ -116,7 +116,7 @@ async function testFirefox() {
   check(res,'gecko id',                      !!mf.browser_specific_settings?.gecko?.id);
 
   const cs=fs.readFileSync(path.join(EXT_PATH,'content','content.js'),'utf8');
-  check(res,'YouTube ad-skip kodu',          cs.includes('setupYouTubeAdSkip'));
+  check(res,'YouTube bypass kodu',           cs.includes('setupYouTubeAdBypass'));
   check(res,'Global state yoxlaması',        cs.includes('adblock_enabled'));
 
   const rules=JSON.parse(fs.readFileSync(path.join(EXT_PATH,'rules','rules.json'),'utf8'));

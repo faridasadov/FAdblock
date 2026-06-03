@@ -98,8 +98,16 @@
 
   // --- YouTube ad handling ---
   function setupYouTubeAdBypass() {
-    let timer = null;
-    let observer = null;
+    const state = window.__fadblockYoutubeBypassState || (window.__fadblockYoutubeBypassState = {
+      timer: null,
+      observer: null,
+      scheduled: false,
+      lastRun: 0,
+      navHandler: null,
+      unloadHandler: null,
+    });
+
+    if (state.timer || state.observer) return;
 
     function injectYouTubeCSS() {
       if (document.getElementById(YT_STYLE_ID)) return;
@@ -138,16 +146,19 @@
     }
 
     function clearYouTubeEnforcement() {
+      const now = Date.now();
+      if (now - state.lastRun < 400) return;
+      state.lastRun = now;
       injectYouTubeCSS();
 
-      const candidates = [
-        ...document.querySelectorAll('ytd-enforcement-message-view-model'),
-        ...document.querySelectorAll('yt-playability-error-supported-renderers'),
-        ...document.querySelectorAll('tp-yt-paper-dialog'),
-        ...document.querySelectorAll('ytd-popup-container'),
-        ...document.querySelectorAll('ytd-watch-flexy[player-unavailable]'),
-        ...document.querySelectorAll('ytmusic-you-there-renderer')
-      ];
+      const candidates = document.querySelectorAll([
+        'ytd-enforcement-message-view-model',
+        'yt-playability-error-supported-renderers',
+        'tp-yt-paper-dialog',
+        'ytd-popup-container',
+        'ytd-watch-flexy[player-unavailable]',
+        'ytmusic-you-there-renderer'
+      ].join(','));
 
       candidates.forEach((el) => {
         if (!looksLikeYouTubeAntiAdblock(el) &&
@@ -171,17 +182,25 @@
         if (video.playbackRate > 2 && !document.querySelector('.ad-showing')) {
           video.playbackRate = 1;
         }
-        video.muted = false;
-        video.play().catch(() => {});
+        if (video.paused) video.play().catch(() => {});
       }
 
       document.querySelector('yt-playability-error-supported-renderers')?.remove();
     }
 
-    function startTick() {
-      if (timer) clearInterval(timer);
-      timer = setInterval(() => {
+    function scheduleEnforcementClear() {
+      if (state.scheduled) return;
+      state.scheduled = true;
+      requestAnimationFrame(() => {
+        state.scheduled = false;
         clearYouTubeEnforcement();
+      });
+    }
+
+    function startTick() {
+      if (state.timer) clearInterval(state.timer);
+      scheduleEnforcementClear();
+      state.timer = setInterval(() => {
         const skipBtn = document.querySelector(
           '.ytp-skip-ad-button, .ytp-ad-skip-button-container button'
         );
@@ -192,18 +211,39 @@
           if (!video.muted) video.muted = true;
           if (video.playbackRate < 16) video.playbackRate = 16;
         }
-      }, 300);
+      }, 1000);
     }
 
     startTick();
-    observer?.disconnect();
-    observer = new MutationObserver(() => clearYouTubeEnforcement());
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    state.observer?.disconnect();
+    state.observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (!(node instanceof Element)) continue;
+          if (
+            node.matches?.('ytd-enforcement-message-view-model, yt-playability-error-supported-renderers, tp-yt-paper-dialog, ytd-popup-container, ytd-watch-flexy[player-unavailable]') ||
+            node.querySelector?.('ytd-enforcement-message-view-model, yt-playability-error-supported-renderers')
+          ) {
+            scheduleEnforcementClear();
+            return;
+          }
+        }
+      }
+    });
+    state.observer.observe(document.documentElement, { childList: true, subtree: true });
     // YouTube uses client-side navigation — restart on each page transition
-    document.addEventListener('yt-navigate-finish', startTick);
-    window.addEventListener('unload', () => {
-      clearInterval(timer);
-      observer?.disconnect();
-    }, { once: true });
+    state.navHandler = () => startTick();
+    document.addEventListener('yt-navigate-finish', state.navHandler);
+    state.unloadHandler = () => {
+      clearInterval(state.timer);
+      state.timer = null;
+      state.observer?.disconnect();
+      state.observer = null;
+      if (state.navHandler) {
+        document.removeEventListener('yt-navigate-finish', state.navHandler);
+        state.navHandler = null;
+      }
+    };
+    window.addEventListener('unload', state.unloadHandler, { once: true });
   }
 })();

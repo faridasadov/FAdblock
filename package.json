@@ -1,6 +1,6 @@
 {
   "name": "fadblock",
-  "version": "1.0.18",
+  "version": "1.0.21",
   "description": "FAdblock — Chrome ve Firefox ucun ad blocker extension",
   "private": true,
   "scripts": {
@@ -8,7 +8,7 @@
     "generate:rules": "node scripts/generate-rules.js",
     "generate:icons": "node scripts/generate-icons.js",
     "generate": "npm run generate:rules && npm run generate:icons",
-    "pack:chrome": "mkdir -p dist && zip -r dist/fadblock-chrome.zip manifest.json background content popup options rules icons -x '*.DS_Store'",
+    "pack:chrome": "mkdir -p dist && zip -r dist/fadblock-chrome.zip manifest.json background content popup options rules icons _locales common -x '*.DS_Store'",
     "pack:firefox": "web-ext build --source-dir . --artifacts-dir dist --overwrite-dest"
   },
   "devDependencies": {
