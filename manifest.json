@@ -1,9 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FAdblock",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Sürətli və yüngül reklam bloker — Chrome və Firefox üçün",
-
   "permissions": [
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
@@ -13,42 +12,56 @@
     "webRequest",
     "contextMenus"
   ],
-
   "commands": {
     "toggle-adblock": {
-      "suggested_key": { "default": "Alt+Shift+A" },
+      "suggested_key": {
+        "default": "Alt+Shift+A"
+      },
       "description": "FAdblock aç/bağla"
     }
   },
-  "host_permissions": ["<all_urls>"],
-
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
     "service_worker": "background/service-worker.js",
-    "scripts": ["background/service-worker.js"],
+    "scripts": [
+      "background/service-worker.js"
+    ],
     "type": "module"
   },
-
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/fingerprint.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/fingerprint.js"
+      ],
       "run_at": "document_start",
       "all_frames": true
     },
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_start",
       "all_frames": true
     },
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/picker.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/picker.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
   ],
-
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -59,12 +72,10 @@
     },
     "default_title": "FAdblock"
   },
-
   "options_ui": {
     "page": "options/options.html",
     "open_in_tab": true
   },
-
   "declarative_net_request": {
     "rule_resources": [
       {
@@ -74,14 +85,12 @@
       }
     ]
   },
-
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-
   "browser_specific_settings": {
     "gecko": {
       "id": "adblock-pro@farid.dev",
