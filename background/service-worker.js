@@ -599,30 +599,17 @@ async function syncCustomBlockedRules(list) {
   });
 }
 
+const BON_APPETIT_META = 'https://raw.githubusercontent.com/Bon-Appetit/porn-domains/main/meta.json';
+const BON_APPETIT_BASE = 'https://raw.githubusercontent.com/Bon-Appetit/porn-domains/main/';
+const STEVEN_BLACK_URL = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts';
+
 async function fetchAndUpdateAdultRules() {
   try {
-    const res = await fetch(
-      'https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts',
-      { cache: 'no-store' }
-    );
-    if (!res.ok) return;
-    const text = await res.text();
-
-    const seen = new Set();
-    const domains = [];
-    for (const line of text.split('\n')) {
-      if (line.startsWith('#') || !line.trim()) continue;
-      const parts = line.trim().split(/\s+/);
-      if (parts.length < 2) continue;
-      let domain = parts[1].toLowerCase();
-      if (!domain.includes('.') || domain === '0.0.0.0') continue;
-      if (domain.startsWith('www.')) domain = domain.slice(4);
-      if (!seen.has(domain)) {
-        seen.add(domain);
-        domains.push(domain);
-        if (domains.length >= MAX_ADULT_RULES) break;
-      }
-    }
+    // Primary: Bon-Appetit (642K+ domains, 4700+ .ru domains, plain domain-per-line format)
+    let domains = await _fetchBonAppetit();
+    // Fallback to StevenBlack if Bon-Appetit fails
+    if (!domains.length) domains = await _fetchStevenBlack();
+    if (!domains.length) return;
 
     await chrome.storage.local.set({
       [ADULT_DOMAINS_KEY]: domains,
@@ -630,6 +617,52 @@ async function fetchAndUpdateAdultRules() {
     });
     if (_adultFilterEnabled) await syncAdultFilterRules();
   } catch {}
+}
+
+async function _fetchBonAppetit() {
+  try {
+    const metaRes = await fetch(BON_APPETIT_META, { cache: 'no-store' });
+    if (!metaRes.ok) return [];
+    const meta = await metaRes.json();
+    const filename = meta?.blocklist?.name;
+    if (!filename) return [];
+
+    const res = await fetch(BON_APPETIT_BASE + filename, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const text = await res.text();
+
+    const seen = new Set(ADULT_DOMAINS_FALLBACK);
+    const domains = [...ADULT_DOMAINS_FALLBACK];
+    for (const line of text.split('\n')) {
+      if (domains.length >= MAX_ADULT_RULES) break;
+      const domain = line.trim().toLowerCase();
+      if (!domain || domain.startsWith('#') || !domain.includes('.')) continue;
+      const clean = domain.startsWith('www.') ? domain.slice(4) : domain;
+      if (!seen.has(clean)) { seen.add(clean); domains.push(clean); }
+    }
+    return domains;
+  } catch { return []; }
+}
+
+async function _fetchStevenBlack() {
+  try {
+    const res = await fetch(STEVEN_BLACK_URL, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const text = await res.text();
+    const seen = new Set(ADULT_DOMAINS_FALLBACK);
+    const domains = [...ADULT_DOMAINS_FALLBACK];
+    for (const line of text.split('\n')) {
+      if (domains.length >= MAX_ADULT_RULES) break;
+      if (line.startsWith('#') || !line.trim()) continue;
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 2) continue;
+      let domain = parts[1].toLowerCase();
+      if (!domain.includes('.') || domain === '0.0.0.0') continue;
+      if (domain.startsWith('www.')) domain = domain.slice(4);
+      if (!seen.has(domain)) { seen.add(domain); domains.push(domain); }
+    }
+    return domains;
+  } catch { return []; }
 }
 
 async function syncAdultFilterRules() {
@@ -1110,7 +1143,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           sources: [
             { id: 'built-in', name: 'Bundled static rules', kind: 'static', status: _categorySettings.network === false ? 'disabled' : 'active', count: 1, updated: null },
             { id: 'yoyo', name: 'YoYo ad servers', kind: 'remote', status: _categorySettings.network === false ? 'paused' : (d[FILTERS_META_KEY] ? 'ready' : 'missing'), count: d[FILTERS_META_KEY]?.count || 0, updated: d[FILTERS_META_KEY]?.updated || null },
-            { id: 'adult', name: 'StevenBlack porn-only', kind: 'remote', status: _categorySettings.adultFilter ? 'ready' : 'standby', count: d[ADULT_META_KEY]?.count || 0, updated: d[ADULT_META_KEY]?.updated || null },
+            { id: 'adult', name: 'Bon-Appetit porn domains (642K+)', kind: 'remote', status: _categorySettings.adultFilter ? 'ready' : 'standby', count: d[ADULT_META_KEY]?.count || 0, updated: d[ADULT_META_KEY]?.updated || null },
             { id: 'user', name: 'User custom rules', kind: 'local', status: 'ready', count: (d[CUSTOM_BLOCKED_KEY] || []).length + (d[CUSTOM_SELECTORS_KEY] || []).length, updated: null },
           ]
         }));
