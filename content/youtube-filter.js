@@ -129,11 +129,36 @@
   // PREF=f4=4000000 activates YouTube's own server-side content restriction
   const YT_RESTRICTED_KEY = 'yt_restricted_mode';
 
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
   function setRestrictedMode(on) {
-    if (on) {
-      document.cookie = 'PREF=f4=4000000; domain=.youtube.com; path=/; max-age=31536000; SameSite=None; Secure';
+    const current = getCookie('PREF');
+    const parts = current
+      .split('&')
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    const values = new Map();
+    for (const part of parts) {
+      const idx = part.indexOf('=');
+      if (idx === -1) values.set(part, '');
+      else values.set(part.slice(0, idx), part.slice(idx + 1));
+    }
+
+    if (on) values.set('f4', '4000000');
+    else values.delete('f4');
+
+    const next = [...values.entries()]
+      .map(([key, value]) => value === '' ? key : `${key}=${value}`)
+      .join('&');
+
+    if (next) {
+      document.cookie = `PREF=${next}; domain=.youtube.com; path=/; max-age=31536000; SameSite=None; Secure`;
     } else {
-      document.cookie = 'PREF=; domain=.youtube.com; path=/; max-age=0';
+      document.cookie = 'PREF=; domain=.youtube.com; path=/; max-age=0; SameSite=None; Secure';
     }
   }
 

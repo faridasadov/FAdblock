@@ -16,11 +16,11 @@ const ADULT_FILTER_KEY   = 'adult_filter_enabled';
 const FILTER_RULE_BASE   = 10000;
 const MAX_FILTER_RULES   = 4000;
 const ADULT_RULE_BASE    = 50000;
-const ADULT_BATCH_SIZE   = 500;   // domains per DNR rule (requestDomains batch)
-const MAX_ADULT_BATCHES  = 8;     // 8 rules × 500 = 4000 domains max
+const MAX_ADULT_RULES    = 4000;
 const ADULT_META_KEY     = 'adult_filter_meta';
 const ADULT_DOMAINS_KEY  = 'adult_filter_domains';
 const MILESTONES = [100, 500, 1000, 5000, 10000, 50000, 100000];
+const DISABLED_DYNAMIC_STATE_KEY = '_disabled_dynamic_rule_sets';
 
 const BADGE_COLORS = { red: '#e74c3c', blue: '#3498db', green: '#27ae60', purple: '#9b59b6' };
 
@@ -111,23 +111,40 @@ async function loadState() {
   _badgeColor         = data[BADGE_COLOR_KEY] || 'red';
   _adultFilterEnabled = data[ADULT_FILTER_KEY] === true;
 
-  // Restore DNR rules after browser restart
-  await syncWhitelistRules(data[WHITELIST_KEY] || []);
+  // Pull preferences from sync storage
+  try {
+    const sync = await chrome.storage.sync.get([
+      NOTIF_ENABLED_KEY, BADGE_COLOR_KEY, ADULT_FILTER_KEY,
+      WHITELIST_KEY, CUSTOM_BLOCKED_KEY,
+    ]);
+    if (sync[NOTIF_ENABLED_KEY] !== undefined) _notifEnabled = sync[NOTIF_ENABLED_KEY] !== false;
+    if (sync[BADGE_COLOR_KEY])                 _badgeColor   = sync[BADGE_COLOR_KEY];
+    if (sync[ADULT_FILTER_KEY] !== undefined)  _adultFilterEnabled = sync[ADULT_FILTER_KEY] === true;
+    if ((!data[WHITELIST_KEY] || data[WHITELIST_KEY].length === 0) && Array.isArray(sync[WHITELIST_KEY])) {
+      _whitelist = new Set(sync[WHITELIST_KEY]);
+    }
+    if ((!data[CUSTOM_BLOCKED_KEY] || data[CUSTOM_BLOCKED_KEY].length === 0) && Array.isArray(sync[CUSTOM_BLOCKED_KEY])) {
+      data[CUSTOM_BLOCKED_KEY] = sync[CUSTOM_BLOCKED_KEY];
+    }
+  } catch {}
+
+  await chrome.storage.local.set({
+    [NOTIF_ENABLED_KEY]: _notifEnabled,
+    [BADGE_COLOR_KEY]: _badgeColor,
+    [ADULT_FILTER_KEY]: _adultFilterEnabled,
+    [WHITELIST_KEY]: [..._whitelist],
+    [CUSTOM_BLOCKED_KEY]: data[CUSTOM_BLOCKED_KEY] || [],
+  }).catch(() => {});
+
+  // Restore DNR rules after browser restart using final merged state
+  await syncWhitelistRules([..._whitelist]);
   await syncCustomBlockedRules(data[CUSTOM_BLOCKED_KEY] || []);
-  if (data[ADULT_FILTER_KEY] === true) await syncAdultFilterRules();
+  await syncAdultFilterRules();
 
   // Restore filter list rules if they were lost (browser update / storage wipe)
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const hasFilterRules = existing.some(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES);
   if (!hasFilterRules) fetchAndUpdateFilters().catch(() => {});
-
-  // Pull preferences from sync storage
-  try {
-    const sync = await chrome.storage.sync.get([NOTIF_ENABLED_KEY, BADGE_COLOR_KEY, ADULT_FILTER_KEY]);
-    if (sync[NOTIF_ENABLED_KEY] !== undefined) _notifEnabled = sync[NOTIF_ENABLED_KEY] !== false;
-    if (sync[BADGE_COLOR_KEY])                 _badgeColor   = sync[BADGE_COLOR_KEY];
-    if (sync[ADULT_FILTER_KEY] !== undefined)  _adultFilterEnabled = sync[ADULT_FILTER_KEY] === true;
-  } catch {}
 }
 loadState();
 
@@ -437,7 +454,7 @@ async function fetchAndUpdateAdultRules() {
       if (!seen.has(domain)) {
         seen.add(domain);
         domains.push(domain);
-        if (domains.length >= ADULT_BATCH_SIZE * MAX_ADULT_BATCHES) break;
+        if (domains.length >= MAX_ADULT_RULES) break;
       }
     }
 
@@ -452,7 +469,7 @@ async function fetchAndUpdateAdultRules() {
 async function syncAdultFilterRules() {
   const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
-  const oldIds   = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_BATCHES).map(r => r.id);
+  const oldIds   = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_RULES).map(r => r.id);
 
   if (!_adultFilterEnabled) {
     await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules: [] });
@@ -461,17 +478,12 @@ async function syncAdultFilterRules() {
 
   const data = await chrome.storage.local.get(ADULT_DOMAINS_KEY);
   const list = data[ADULT_DOMAINS_KEY]?.length ? data[ADULT_DOMAINS_KEY] : ADULT_DOMAINS_FALLBACK;
-
-  // Batch domains into groups — one DNR rule per batch using requestDomains
-  const addRules = [];
-  for (let i = 0; i < list.length && i < ADULT_BATCH_SIZE * MAX_ADULT_BATCHES; i += ADULT_BATCH_SIZE) {
-    addRules.push({
-      id: ADULT_RULE_BASE + Math.floor(i / ADULT_BATCH_SIZE),
-      priority: 998,
-      action: { type: 'block' },
-      condition: { requestDomains: list.slice(i, i + ADULT_BATCH_SIZE), resourceTypes: allTypes }
-    });
-  }
+  const addRules = list.slice(0, MAX_ADULT_RULES).map((domain, i) => ({
+    id: ADULT_RULE_BASE + i,
+    priority: 998,
+    action: { type: 'block' },
+    condition: { urlFilter: `||${domain}^`, resourceTypes: allTypes }
+  }));
 
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules });
 }
@@ -493,15 +505,27 @@ async function setGlobalEnabled(enabled) {
     // extension truly stops blocking when toggled off.
     const all = await chrome.declarativeNetRequest.getDynamicRules();
     const filterIds = all.filter(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES).map(r => r.id);
-    if (!enabled && filterIds.length) {
-      // Stash IDs so we can restore them
-      await chrome.storage.local.set({ _disabledFilterIds: filterIds });
-      await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: filterIds });
+    const adultIds = all.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_RULES).map(r => r.id);
+    const customIds = all.filter(r => r.id >= 70000 && r.id < 80000).map(r => r.id);
+    const removeIds = [...filterIds, ...adultIds, ...customIds];
+
+    if (!enabled && removeIds.length) {
+      await chrome.storage.local.set({
+        [DISABLED_DYNAMIC_STATE_KEY]: {
+          hadFilters: filterIds.length > 0,
+          hadAdult: adultIds.length > 0,
+          hadCustom: customIds.length > 0,
+        }
+      });
+      await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: removeIds });
     } else if (enabled) {
-      const stash = await chrome.storage.local.get('_disabledFilterIds');
-      if (stash._disabledFilterIds?.length) {
-        chrome.storage.local.remove('_disabledFilterIds');
-        fetchAndUpdateFilters().catch(() => {});
+      const stash = await chrome.storage.local.get(DISABLED_DYNAMIC_STATE_KEY);
+      await chrome.storage.local.remove(DISABLED_DYNAMIC_STATE_KEY);
+      if (stash[DISABLED_DYNAMIC_STATE_KEY]?.hadFilters) fetchAndUpdateFilters().catch(() => {});
+      if (stash[DISABLED_DYNAMIC_STATE_KEY]?.hadAdult)   syncAdultFilterRules().catch(() => {});
+      if (stash[DISABLED_DYNAMIC_STATE_KEY]?.hadCustom) {
+        const custom = await chrome.storage.local.get(CUSTOM_BLOCKED_KEY);
+        syncCustomBlockedRules(custom[CUSTOM_BLOCKED_KEY] || []).catch(() => {});
       }
     }
   } catch {}
