@@ -2,6 +2,8 @@
   'use strict';
 
   const KEY = 'social_filter_enabled';
+  const CATEGORY_SETTINGS_KEY = 'category_settings';
+  const SITE_RULES_KEY = 'site_rules';
 
   const KEYWORDS = [
     'porn','xxx','nsfw','onlyfans','nude','naked','hentai','erotic',
@@ -11,6 +13,7 @@
   ];
 
   const host     = location.hostname;
+  const cleanHost = host.replace(/^www\./, '');
   const isReddit  = host.includes('reddit.com');
   const isTikTok  = host.includes('tiktok.com');
   const isTwitter = host.includes('twitter.com') || host.includes('x.com');
@@ -101,8 +104,15 @@
     else    { stopObserver(); restoreAll(); }
   }
 
-  chrome.storage.local.get(KEY, data => apply(data[KEY] === true));
+  function resolveState(data) {
+    const categories = { socialFilter: true, ...(data[CATEGORY_SETTINGS_KEY] || {}) };
+    const siteRule = (data[SITE_RULES_KEY] || {})[cleanHost] || {};
+    const recovery = !!(siteRule.recoveryUntil && siteRule.recoveryUntil > Date.now());
+    apply(data[KEY] === true && categories.socialFilter !== false && !siteRule.disableSocialFilter && !recovery);
+  }
+
+  chrome.storage.local.get([KEY, CATEGORY_SETTINGS_KEY, SITE_RULES_KEY], resolveState);
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && KEY in changes) apply(changes[KEY].newValue === true);
+    if (area === 'local') chrome.storage.local.get([KEY, CATEGORY_SETTINGS_KEY, SITE_RULES_KEY], resolveState);
   });
 })();

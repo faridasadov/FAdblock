@@ -18,17 +18,16 @@
       </label>
     </header>
 
-    <!-- Global pause -->
     <div class="pause-row" id="pauseRow">
       <span class="pause-icon">⏸</span>
       <div class="pause-btns" id="pauseBtns">
-        <button class="btn-pause" data-min="15" data-i18n="popup15m">15m</button>
-        <button class="btn-pause" data-min="30" data-i18n="popup30m">30m</button>
-        <button class="btn-pause" data-min="60" data-i18n="popup1h">1s</button>
+        <button class="btn-pause" data-min="10">10m</button>
+        <button class="btn-pause" data-min="30">30m</button>
+        <button class="btn-pause" data-min="60">1h</button>
       </div>
       <div class="pause-active" id="pauseActive" style="display:none">
         <span class="pause-countdown" id="pauseCountdown">--:--</span>
-        <button class="btn-resume" id="resumeBtn" data-i18n="popupResume">↺</button>
+        <button class="btn-resume" id="resumeBtn">↺</button>
       </div>
     </div>
 
@@ -40,15 +39,32 @@
       </label>
     </div>
 
-    <!-- Per-site pause -->
-    <div class="site-pause-row" id="sitePauseRow" style="display:none">
-      <span class="site-pause-label" data-i18n="popupSitePause">Sayt pauza:</span>
-      <button class="btn-pause btn-pause--sm" data-site-min="15">15m</button>
-      <button class="btn-pause btn-pause--sm" data-site-min="30">30m</button>
-      <button class="btn-pause btn-pause--sm" data-site-min="60">1s</button>
-      <span class="site-pause-countdown" id="sitePauseCountdown" style="display:none"></span>
-      <button class="btn-resume btn-resume--sm" id="siteResumeBtn" style="display:none" data-i18n="popupResume">↺</button>
+    <div class="quick-grid">
+      <button class="quick-btn" id="brokenSiteBtn">Broken site</button>
+      <button class="quick-btn" id="undoBtn">Undo last</button>
+      <button class="quick-btn" id="sitePause60Btn">Pause site 1h</button>
     </div>
+    <div class="quick-meta" id="siteRecoveryMeta" style="display:none"></div>
+
+    <section class="site-controls" id="siteControls">
+      <div class="section-title">This site</div>
+      <label class="mini-toggle-row">
+        <span>Cosmetic filter</span>
+        <input type="checkbox" id="siteCosmeticToggle" checked />
+      </label>
+      <label class="mini-toggle-row">
+        <span>Custom CSS</span>
+        <input type="checkbox" id="siteCustomSelectorsToggle" checked />
+      </label>
+      <label class="mini-toggle-row">
+        <span>YouTube bypass</span>
+        <input type="checkbox" id="siteYoutubeBypassToggle" checked />
+      </label>
+      <label class="mini-toggle-row">
+        <span>Social filter</span>
+        <input type="checkbox" id="siteSocialToggle" checked />
+      </label>
+    </section>
 
     <div class="stats-grid">
       <div class="stat-card">

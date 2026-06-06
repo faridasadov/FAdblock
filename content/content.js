@@ -3,30 +3,18 @@
 
   const STYLE_ID = '__adblock_pro_css__';
   const YT_STYLE_ID = '__fadblock_youtube_css__';
+  const CUSTOM_STYLE_ID = '__adblock_custom_css__';
+  const HIDDEN_ATTR = 'data-fb-generic-hidden';
+  const HOST = location.hostname.replace(/^www\./, '');
+  const CATEGORY_SETTINGS_KEY = 'category_settings';
+  const SITE_RULES_KEY = 'site_rules';
 
-  // On mail/productivity apps, skip overly-generic selectors that match UI chrome
-  const isMailApp = /^(mail\.google\.com|outlook\.live\.com|outlook\.office\.com|mail\.yahoo\.com|mail\.proton\.me)$/.test(location.hostname);
-
-  const COSMETIC_SELECTORS_GENERIC = isMailApp ? [] : [
-    '.ad', '.ad-unit', '.ad-wrapper', '.ad-container', '.ad-slot',
-    '.ads', '.ads-wrapper', '.ads-container',
-    '#ad', '#ads', '#ad-container', '#ad-wrapper',
-    '.advertisement', '.advertisements',
-    '[class*="advert"]:not(article):not(section)',
-    '[id*="advert"]:not(article):not(section)',
-    '.banner-ad', '.ad-banner', '.leaderboard-ad',
-    '.sidebar-ad', '.sticky-ad', '.inline-ad',
-    '.sponsored-content', '.sponsored-links', '.sponsored-post',
-    '[class*="sponsored"]:not(article):not(section)',
-  ];
-
-  const COSMETIC_SELECTORS = [
+  const SPECIFIC_SELECTORS = [
     '.adsbygoogle', 'ins.adsbygoogle',
     '[id^="google_ads_"]', '[id^="div-gpt-ad"]',
     'iframe[src*="googlesyndication.com"]',
     'iframe[src*="doubleclick.net"]',
     'iframe[src*="googleadservices.com"]',
-    ...COSMETIC_SELECTORS_GENERIC,
     '[id*="taboola"]', '[class*="taboola"]',
     '[id*="outbrain"]', '[class*="outbrain"]',
     '[id*="mgid"]', '[class*="mgid"]',
@@ -37,50 +25,43 @@
     '[data-adtype]', '[data-ad-comet-type]',
   ];
 
-  function injectCosmeticCSS() {
-    if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent =
-      COSMETIC_SELECTORS.join(',\n') +
-      ' {\n  display: none !important;\n  visibility: hidden !important;\n}';
-    (document.head || document.documentElement).prepend(style);
-  }
+  const GENERIC_SELECTORS = [
+    '.ad', '.ad-unit', '.ad-wrapper', '.ad-container', '.ad-slot',
+    '.ads', '.ads-wrapper', '.ads-container',
+    '#ad', '#ads', '#ad-container', '#ad-wrapper',
+    '.advertisement', '.advertisements',
+    '.banner-ad', '.ad-banner', '.leaderboard-ad',
+    '.sidebar-ad', '.sticky-ad', '.inline-ad',
+    '.sponsored-content', '.sponsored-links', '.sponsored-post',
+    '[class*="advert"]', '[id*="advert"]', '[class*="sponsored"]'
+  ];
 
-  function removeCosmeticCSS() {
-    document.getElementById(STYLE_ID)?.remove();
-    document.getElementById(YT_STYLE_ID)?.remove();
-  }
+  const HOST_GENERIC_EXCLUSIONS = [
+    /mail\.google\.com$/,
+    /outlook\.live\.com$/,
+    /outlook\.office\.com$/,
+    /mail\.yahoo\.com$/,
+    /mail\.proton\.me$/,
+    /docs\.google\.com$/,
+    /notion\.so$/,
+    /figma\.com$/,
+  ];
 
-  let _cosmeticActive = false;
+  const DEFAULT_CATEGORY_SETTINGS = {
+    cosmetic: true,
+    customSelectors: true,
+    youtubeBypass: true,
+  };
 
-  function startObserver() {
-    const obs = new MutationObserver(() => {
-      // Only re-inject if cosmetic filtering is currently active.
-      // Without this guard, removing the style when disabled causes the observer
-      // to immediately re-inject it on the next DOM mutation.
-      if (_cosmeticActive && !document.getElementById(STYLE_ID)) injectCosmeticCSS();
-    });
-    const attach = () => obs.observe(document.documentElement, { childList: true, subtree: true });
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', attach, { once: true });
-    } else {
-      attach();
-    }
-  }
-
-  const CUSTOM_STYLE_ID = '__adblock_custom_css__';
-
-  function applyCustomSelectors(selectors) {
-    let el = document.getElementById(CUSTOM_STYLE_ID);
-    if (!selectors || !selectors.length) { el?.remove(); return; }
-    if (!el) {
-      el = document.createElement('style');
-      el.id = CUSTOM_STYLE_ID;
-      (document.head || document.documentElement).prepend(el);
-    }
-    el.textContent = selectors.join(',\n') + ' {\n  display: none !important;\n  visibility: hidden !important;\n}';
-  }
+  const state = {
+    enabled: true,
+    categories: { ...DEFAULT_CATEGORY_SETTINGS },
+    customSelectors: [],
+    siteRule: {},
+    observer: null,
+    genericTimer: null,
+    cosmeticActive: false,
+  };
 
   function isYouTubeWatchPage() {
     return location.hostname.includes('youtube.com') &&
@@ -91,56 +72,162 @@
     return document.querySelector('#movie_player video, .html5-video-player video');
   }
 
-  // Inject CSS immediately (zero delay) — removes async gap where ads flash through.
-  // If user has disabled the extension we'll remove it once storage responds.
-  injectCosmeticCSS();
-  _cosmeticActive = true;
-  startObserver();
+  function hasRecovery() {
+    return !!(state.siteRule?.recoveryUntil && state.siteRule.recoveryUntil > Date.now());
+  }
 
-  chrome.storage.local.get(['adblock_enabled', 'custom_selectors'], ({ adblock_enabled, custom_selectors }) => {
-    if (adblock_enabled === false) {
-      _cosmeticActive = false;
-      removeCosmeticCSS();
+  function effectiveCosmeticEnabled() {
+    return state.enabled && !hasRecovery() && state.categories.cosmetic !== false && !state.siteRule.disableCosmetic;
+  }
+
+  function effectiveCustomSelectorsEnabled() {
+    return state.enabled && !hasRecovery() && state.categories.customSelectors !== false && !state.siteRule.disableCustomSelectors;
+  }
+
+  function effectiveYouTubeBypassEnabled() {
+    return state.enabled && !hasRecovery() && state.categories.youtubeBypass !== false && !state.siteRule.disableYouTubeBypass;
+  }
+
+  function injectSpecificCosmeticCSS() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = `${SPECIFIC_SELECTORS.join(',\n')} {\n  display: none !important;\n  visibility: hidden !important;\n}`;
+    (document.head || document.documentElement).prepend(style);
+  }
+
+  function removeCosmeticCSS() {
+    document.getElementById(STYLE_ID)?.remove();
+    document.getElementById(YT_STYLE_ID)?.remove();
+  }
+
+  function applyCustomSelectors(selectors) {
+    let el = document.getElementById(CUSTOM_STYLE_ID);
+    if (!effectiveCustomSelectorsEnabled() || !selectors?.length) {
+      el?.remove();
       return;
     }
-    applyCustomSelectors(custom_selectors || []);
-    if (isYouTubeWatchPage()) setupYouTubeAdBypass();
+    if (!el) {
+      el = document.createElement('style');
+      el.id = CUSTOM_STYLE_ID;
+      (document.head || document.documentElement).prepend(el);
+    }
+    el.textContent = `${selectors.join(',\n')} {\n  display: none !important;\n  visibility: hidden !important;\n}`;
+  }
+
+  function shouldSkipGenericSweep() {
+    return HOST_GENERIC_EXCLUSIONS.some((pattern) => pattern.test(HOST));
+  }
+
+  function isProbablyAdNode(el) {
+    if (!(el instanceof HTMLElement)) return false;
+    if (el.closest('main article, article main, form, nav, header, footer, aside[role="complementary"]')) return false;
+    if (el.matches('body, html, main, article, section, nav, header, footer, form, input, textarea, button, [role="button"]')) return false;
+
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return false;
+    if (rect.width > window.innerWidth * 0.9 && rect.height > window.innerHeight * 0.5) return false;
+    if (rect.height > 900) return false;
+
+    const text = `${el.id} ${el.className} ${el.getAttribute('aria-label') || ''}`.toLowerCase();
+    const hasAdSignal = /(ad|ads|advert|sponsor|promo|banner|taboola|outbrain|mgid)/.test(text);
+    const fixedBox = style.position === 'fixed' || style.position === 'sticky';
+    const likelyMediaAd = !!el.querySelector('iframe, img, video');
+    return hasAdSignal && (fixedBox || likelyMediaAd || rect.height < 420);
+  }
+
+  function restoreGenericHidden() {
+    document.querySelectorAll(`[${HIDDEN_ATTR}]`).forEach((el) => {
+      el.removeAttribute(HIDDEN_ATTR);
+      el.style.removeProperty('display');
+      el.style.removeProperty('visibility');
+    });
+  }
+
+  function applyGenericSweep() {
+    state.genericTimer = null;
+    if (!effectiveCosmeticEnabled() || shouldSkipGenericSweep()) {
+      restoreGenericHidden();
+      return;
+    }
+    document.querySelectorAll(GENERIC_SELECTORS.join(',')).forEach((el) => {
+      if (!isProbablyAdNode(el)) return;
+      el.setAttribute(HIDDEN_ATTR, '1');
+      el.style.setProperty('display', 'none', 'important');
+      el.style.setProperty('visibility', 'hidden', 'important');
+    });
+  }
+
+  function scheduleGenericSweep() {
+    if (state.genericTimer) return;
+    state.genericTimer = setTimeout(applyGenericSweep, 250);
+  }
+
+  function ensureBaseObserver() {
+    if (state.observer) return;
+    state.observer = new MutationObserver(() => {
+      if (state.cosmeticActive && !document.getElementById(STYLE_ID)) injectSpecificCosmeticCSS();
+      scheduleGenericSweep();
+    });
+    const attach = () => state.observer.observe(document.documentElement, { childList: true, subtree: true });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach, { once: true });
+    else attach();
+  }
+
+  function syncCosmeticState() {
+    state.cosmeticActive = effectiveCosmeticEnabled();
+    if (state.cosmeticActive) injectSpecificCosmeticCSS();
+    else removeCosmeticCSS();
+    if (!state.cosmeticActive) restoreGenericHidden();
+    scheduleGenericSweep();
+  }
+
+  function applyState() {
+    syncCosmeticState();
+    applyCustomSelectors(state.customSelectors);
+    if (isYouTubeWatchPage()) {
+      if (effectiveYouTubeBypassEnabled()) setupYouTubeAdBypass();
+      else teardownYouTubeBypass();
+    }
+  }
+
+  function refreshStateFromStorage(changes) {
+    if (changes.adblock_enabled) state.enabled = changes.adblock_enabled.newValue !== false;
+    if (changes.custom_selectors) state.customSelectors = changes.custom_selectors.newValue || [];
+    if (changes[CATEGORY_SETTINGS_KEY]) state.categories = { ...DEFAULT_CATEGORY_SETTINGS, ...(changes[CATEGORY_SETTINGS_KEY].newValue || {}) };
+    if (changes[SITE_RULES_KEY]) state.siteRule = (changes[SITE_RULES_KEY].newValue || {})[HOST] || {};
+    applyState();
+  }
+
+  ensureBaseObserver();
+  chrome.storage.local.get(['adblock_enabled', 'custom_selectors', CATEGORY_SETTINGS_KEY, SITE_RULES_KEY], (data) => {
+    state.enabled = data.adblock_enabled !== false;
+    state.customSelectors = data.custom_selectors || [];
+    state.categories = { ...DEFAULT_CATEGORY_SETTINGS, ...(data[CATEGORY_SETTINGS_KEY] || {}) };
+    state.siteRule = (data[SITE_RULES_KEY] || {})[HOST] || {};
+    applyState();
   });
 
-  // React to global toggle and custom selector changes in real time
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
-    if ('adblock_enabled' in changes) {
-      if (changes.adblock_enabled.newValue === false) {
-        _cosmeticActive = false;
-        removeCosmeticCSS();
-        applyCustomSelectors([]);
-      } else {
-        _cosmeticActive = true;
-        injectCosmeticCSS();
-        chrome.storage.local.get('custom_selectors', ({ custom_selectors }) => {
-          applyCustomSelectors(custom_selectors || []);
-        });
-        if (isYouTubeWatchPage()) setupYouTubeAdBypass();
-      }
-    }
-    if ('custom_selectors' in changes) {
-      applyCustomSelectors(changes.custom_selectors.newValue || []);
-    }
+    refreshStateFromStorage(changes);
   });
 
-  // --- YouTube ad handling ---
   function setupYouTubeAdBypass() {
-    const state = window.__fadblockYoutubeBypassState || (window.__fadblockYoutubeBypassState = {
+    const shared = window.__fadblockYoutubeBypassState || (window.__fadblockYoutubeBypassState = {
       timer: null,
       observer: null,
       scheduled: false,
       lastRun: 0,
+      lastForcedSeekAt: 0,
       navHandler: null,
       unloadHandler: null,
     });
 
-    if (state.timer || state.observer) return;
+    if (shared.timer || shared.observer) return;
 
     function injectYouTubeCSS() {
       if (document.getElementById(YT_STYLE_ID)) return;
@@ -180,10 +267,9 @@
 
     function clearYouTubeEnforcement() {
       const now = Date.now();
-      if (now - state.lastRun < 100) return;
-      state.lastRun = now;
+      if (now - shared.lastRun < 100) return;
+      shared.lastRun = now;
       injectYouTubeCSS();
-
       if (!isYouTubeWatchPage()) return;
 
       const candidates = document.querySelectorAll([
@@ -213,54 +299,76 @@
       player?.removeAttribute('style');
 
       const video = getYouTubeMainVideo();
-      if (video) {
-        if (video.playbackRate > 2 && !document.querySelector('.ad-showing')) {
-          video.playbackRate = 1;
-        }
+      if (video && video.playbackRate > 2 && !document.querySelector('.ad-showing')) {
+        video.playbackRate = 1;
       }
 
       document.querySelector('yt-playability-error-supported-renderers')?.remove();
     }
 
     function scheduleEnforcementClear() {
-      if (state.scheduled) return;
-      state.scheduled = true;
+      if (shared.scheduled) return;
+      shared.scheduled = true;
       requestAnimationFrame(() => {
-        state.scheduled = false;
+        shared.scheduled = false;
         clearYouTubeEnforcement();
       });
     }
 
     function tick() {
-      if (!isYouTubeWatchPage()) return;
+      if (!isYouTubeWatchPage() || !effectiveYouTubeBypassEnabled()) return;
       let nextDelay = 1000;
-      const skipBtn = document.querySelector(
-        '.ytp-skip-ad-button, .ytp-ad-skip-button-container button, .ytp-skip-ad-button-container button'
-      );
+      const skipBtn = document.querySelector([
+        '.ytp-skip-ad-button',
+        '.ytp-skip-ad-button-modern',
+        '.ytp-ad-skip-button-container button',
+        '.ytp-skip-ad-button-container button',
+        'button[class*="skip-ad"]'
+      ].join(', '));
       if (skipBtn) {
         skipBtn.click();
-        nextDelay = 250;
+        nextDelay = 80;
       } else {
         const video = getYouTubeMainVideo();
-        const isAd  = document.querySelector('.ad-showing');
+        const player = document.querySelector('#movie_player, .html5-video-player');
+        const isAd = document.querySelector('.ad-showing, .ytp-ad-player-overlay, .ytp-ad-preview-container, .video-ads');
         if (video && isAd && !video.ended) {
           if (!video.muted) video.muted = true;
           if (video.playbackRate < 16) video.playbackRate = 16;
-          nextDelay = 250;
+          if (typeof video.play === 'function') {
+            const promise = video.play();
+            if (promise?.catch) promise.catch(() => {});
+          }
+
+          const remaining = Number.isFinite(video.duration) ? (video.duration - video.currentTime) : Infinity;
+          if (remaining > 0.35) {
+            const target = Math.max(video.currentTime, video.duration - 0.12);
+            try {
+              if (typeof video.fastSeek === 'function') video.fastSeek(target);
+              else video.currentTime = target;
+            } catch {}
+            if (typeof player?.seekTo === 'function') {
+              try { player.seekTo(target, true); } catch {}
+            }
+            shared.lastForcedSeekAt = Date.now();
+            nextDelay = 80;
+          } else if (Date.now() - shared.lastForcedSeekAt > 250) {
+            nextDelay = 120;
+          }
         }
       }
-      state.timer = setTimeout(tick, nextDelay);
+      shared.timer = setTimeout(tick, nextDelay);
     }
 
     function startTick() {
-      if (state.timer) clearTimeout(state.timer);
+      if (shared.timer) clearTimeout(shared.timer);
       scheduleEnforcementClear();
-      state.timer = setTimeout(tick, 250);
+      shared.timer = setTimeout(tick, 250);
     }
 
     startTick();
-    state.observer?.disconnect();
-    state.observer = new MutationObserver((mutations) => {
+    shared.observer?.disconnect();
+    shared.observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (!(node instanceof Element)) continue;
@@ -274,27 +382,34 @@
         }
       }
     });
-    state.observer.observe(document.documentElement, { childList: true, subtree: true });
-    // YouTube uses client-side navigation — restart on each page transition
-    state.navHandler = () => {
-      if (isYouTubeWatchPage()) {
-        startTick();
-      } else if (state.timer) {
-        clearTimeout(state.timer);
-        state.timer = null;
-      }
+    shared.observer.observe(document.documentElement, { childList: true, subtree: true });
+    shared.navHandler = () => {
+      if (isYouTubeWatchPage() && effectiveYouTubeBypassEnabled()) startTick();
+      else teardownYouTubeBypass();
     };
-    document.addEventListener('yt-navigate-finish', state.navHandler);
-    state.unloadHandler = () => {
-      clearTimeout(state.timer);
-      state.timer = null;
-      state.observer?.disconnect();
-      state.observer = null;
-      if (state.navHandler) {
-        document.removeEventListener('yt-navigate-finish', state.navHandler);
-        state.navHandler = null;
-      }
-    };
-    window.addEventListener('pagehide', state.unloadHandler, { once: true });
+    document.addEventListener('yt-navigate-finish', shared.navHandler);
+    shared.unloadHandler = teardownYouTubeBypass;
+    window.addEventListener('pagehide', shared.unloadHandler, { once: true });
+  }
+
+  function teardownYouTubeBypass() {
+    const shared = window.__fadblockYoutubeBypassState;
+    if (!shared) {
+      document.getElementById(YT_STYLE_ID)?.remove();
+      return;
+    }
+    if (shared.timer) clearTimeout(shared.timer);
+    shared.timer = null;
+    shared.observer?.disconnect();
+    shared.observer = null;
+    if (shared.navHandler) {
+      document.removeEventListener('yt-navigate-finish', shared.navHandler);
+      shared.navHandler = null;
+    }
+    if (shared.unloadHandler) {
+      window.removeEventListener('pagehide', shared.unloadHandler);
+      shared.unloadHandler = null;
+    }
+    document.getElementById(YT_STYLE_ID)?.remove();
   }
 })();

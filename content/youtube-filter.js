@@ -2,6 +2,9 @@
   'use strict';
 
   const KEY = 'youtube_filter_enabled';
+  const CATEGORY_SETTINGS_KEY = 'category_settings';
+  const SITE_RULES_KEY = 'site_rules';
+  const HOST = location.hostname.replace(/^www\./, '');
 
   // Specific enough to use substring match
   const EXACT_KEYWORDS = [
@@ -46,6 +49,7 @@
   ].join(',');
 
   let enabled = false;
+  let restrictedAllowed = true;
   let observer = null;
   let debounceTimer = null;
 
@@ -162,15 +166,27 @@
     }
   }
 
-  chrome.storage.local.get([KEY, YT_RESTRICTED_KEY], data => {
-    apply(data[KEY] === true);
-    setRestrictedMode(data[YT_RESTRICTED_KEY] === true);
+  function resolveState(data) {
+    const categories = {
+      youtubeFilter: true,
+      restrictedMode: true,
+      ...(data[CATEGORY_SETTINGS_KEY] || {})
+    };
+    const siteRule = (data[SITE_RULES_KEY] || {})[HOST] || {};
+    const recovery = !!(siteRule.recoveryUntil && siteRule.recoveryUntil > Date.now());
+    const filterEnabled = data[KEY] === true && categories.youtubeFilter !== false && !siteRule.disableYouTubeFilter && !recovery;
+    restrictedAllowed = categories.restrictedMode !== false && !recovery;
+    apply(filterEnabled);
+    setRestrictedMode(data[YT_RESTRICTED_KEY] === true && restrictedAllowed);
+  }
+
+  chrome.storage.local.get([KEY, YT_RESTRICTED_KEY, CATEGORY_SETTINGS_KEY, SITE_RULES_KEY], data => {
+    resolveState(data);
   });
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') {
-      if (KEY in changes) apply(changes[KEY].newValue === true);
-      if (YT_RESTRICTED_KEY in changes) setRestrictedMode(changes[YT_RESTRICTED_KEY].newValue === true);
+      chrome.storage.local.get([KEY, YT_RESTRICTED_KEY, CATEGORY_SETTINGS_KEY, SITE_RULES_KEY], resolveState);
     }
   });
 })();

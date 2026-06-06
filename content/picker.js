@@ -65,13 +65,9 @@
     document.head.appendChild(preview);
 
     if (window.confirm(t('pickerConfirm', [selector]))) {
-      chrome.storage.local.get('custom_selectors', ({ custom_selectors }) => {
-        const list = custom_selectors || [];
-        if (!list.includes(selector)) {
-          chrome.storage.local.set({ custom_selectors: [...list, selector] });
-          showUndoToast(selector, preview);
-        }
-      });
+      chrome.runtime.sendMessage({ type: 'ADD_CUSTOM_SELECTOR', selector }).then(() => {
+        showUndoToast(selector, preview);
+      }).catch(() => preview.remove());
     } else {
       preview.remove();
     }
@@ -96,10 +92,7 @@
 
     btn.addEventListener('click', () => {
       clearTimeout(timer);
-      chrome.storage.local.get('custom_selectors', ({ custom_selectors }) => {
-        const updated = (custom_selectors || []).filter(s => s !== selector);
-        chrome.storage.local.set({ custom_selectors: updated });
-      });
+      chrome.runtime.sendMessage({ type: 'REMOVE_CUSTOM_SELECTOR', selector }).catch(() => {});
       preview.remove();
       toast.remove();
     });
