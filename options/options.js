@@ -71,6 +71,20 @@ function renderSiteStats(stats) {
   });
 }
 
+// --- Type stats ---
+const TYPE_KEYS = ['script','image','xmlhttprequest','media','sub_frame','other'];
+
+function renderTypeStats(stats) {
+  const max = Math.max(1, ...Object.values(stats));
+  TYPE_KEYS.forEach(k => {
+    const cnt = stats[k] || 0;
+    const el = $('cnt-' + k);
+    const bar = $('bar-' + k);
+    if (el) el.textContent = formatNumber(cnt);
+    if (bar) bar.style.width = Math.round((cnt / max) * 100) + '%';
+  });
+}
+
 // --- Custom CSS selectors ---
 function renderSelectors(list) {
   const ul = $('selectorList');
@@ -157,13 +171,8 @@ function renderChart(history) {
   wrap.style.display = 'flex';
   const max = Math.max(...days.map(d => history[d]), 1);
   const labels = [
-    t('chartDay0'),
-    t('chartDay1'),
-    t('chartDay2'),
-    t('chartDay3'),
-    t('chartDay4'),
-    t('chartDay5'),
-    t('chartDay6')
+    t('chartDay0'), t('chartDay1'), t('chartDay2'), t('chartDay3'),
+    t('chartDay4'), t('chartDay5'), t('chartDay6')
   ];
   days.forEach(day => {
     const count = history[day];
@@ -191,6 +200,13 @@ async function loadFiltersMeta() {
   }
 }
 
+// --- Badge color picker ---
+function applyBadgeColorUI(color) {
+  document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.classList.toggle('color-btn--active', btn.dataset.color === color);
+  });
+}
+
 // --- Export ---
 async function exportSettings() {
   const [{ list: whitelist }, { list: blocked }, csData] = await Promise.all([
@@ -216,8 +232,8 @@ async function importSettings(file) {
   try {
     const text = await file.text();
     const data = JSON.parse(text);
-    if (data.whitelist)         await chrome.runtime.sendMessage({ type: 'SET_WHITELIST', list: data.whitelist });
-    if (data.custom_selectors)  await chrome.storage.local.set({ custom_selectors: data.custom_selectors });
+    if (data.whitelist)        await chrome.runtime.sendMessage({ type: 'SET_WHITELIST', list: data.whitelist });
+    if (data.custom_selectors) await chrome.storage.local.set({ custom_selectors: data.custom_selectors });
     if (data.custom_blocked) {
       await chrome.storage.local.set({ custom_blocked: data.custom_blocked });
       for (const domain of data.custom_blocked) {
@@ -233,15 +249,31 @@ async function init() {
   applyI18n();
   document.title = t('optionsPageTitle');
 
-  const [stats, { list: whitelist }, { stats: siteStats }, { list: blockedList }, csData, histData] =
-    await Promise.all([
-      chrome.runtime.sendMessage({ type: 'GET_STATS' }),
-      chrome.runtime.sendMessage({ type: 'GET_WHITELIST' }),
-      chrome.runtime.sendMessage({ type: 'GET_SITE_STATS' }),
-      chrome.runtime.sendMessage({ type: 'GET_CUSTOM_BLOCKED' }),
-      chrome.storage.local.get('custom_selectors'),
-      chrome.runtime.sendMessage({ type: 'GET_HISTORY' }),
-    ]);
+  const [
+    stats,
+    { list: whitelist },
+    { stats: siteStats },
+    { list: blockedList },
+    csData,
+    histData,
+    { stats: typeStats },
+    { enabled: notifEnabled },
+    { color: badgeColor },
+    { enabled: adultEnabled },
+    ytData,
+  ] = await Promise.all([
+    chrome.runtime.sendMessage({ type: 'GET_STATS' }),
+    chrome.runtime.sendMessage({ type: 'GET_WHITELIST' }),
+    chrome.runtime.sendMessage({ type: 'GET_SITE_STATS' }),
+    chrome.runtime.sendMessage({ type: 'GET_CUSTOM_BLOCKED' }),
+    chrome.storage.local.get('custom_selectors'),
+    chrome.runtime.sendMessage({ type: 'GET_HISTORY' }),
+    chrome.runtime.sendMessage({ type: 'GET_TYPE_STATS' }),
+    chrome.runtime.sendMessage({ type: 'GET_NOTIF_ENABLED' }),
+    chrome.runtime.sendMessage({ type: 'GET_BADGE_COLOR' }),
+    chrome.runtime.sendMessage({ type: 'GET_ADULT_FILTER' }),
+    chrome.storage.local.get('youtube_filter_enabled'),
+  ]);
 
   $('totalBlocked').textContent = formatNumber(stats?.total || 0);
   $('todayBlocked').textContent = formatNumber(stats?.today || 0);
@@ -250,14 +282,45 @@ async function init() {
   renderSelectors(csData.custom_selectors || []);
   renderBlockList(blockedList);
   renderChart(histData?.history || {});
+  renderTypeStats(typeStats || {});
   loadFiltersMeta();
 
+  // Notification toggle
+  $('notifToggle').checked = notifEnabled !== false;
+  $('notifToggle').addEventListener('change', e => {
+    chrome.runtime.sendMessage({ type: 'SET_NOTIF_ENABLED', enabled: e.target.checked });
+  });
+
+  // Badge color
+  applyBadgeColorUI(badgeColor || 'red');
+  document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ type: 'SET_BADGE_COLOR', color: btn.dataset.color });
+      applyBadgeColorUI(btn.dataset.color);
+    });
+  });
+
+  // Adult filter
+  $('adultFilterToggle').checked = adultEnabled === true;
+  $('adultFilterToggle').addEventListener('change', e => {
+    chrome.runtime.sendMessage({ type: 'SET_ADULT_FILTER', enabled: e.target.checked });
+  });
+
+  // YouTube filter (stored locally, read by youtube-filter.js content script)
+  $('ytFilterToggle').checked = ytData.youtube_filter_enabled === true;
+  $('ytFilterToggle').addEventListener('change', e => {
+    chrome.storage.local.set({ youtube_filter_enabled: e.target.checked });
+  });
+
+  // Stats & whitelist controls
   $('addDomain').addEventListener('click', addDomain);
   $('domainInput').addEventListener('keydown', e => { if (e.key === 'Enter') addDomain(); });
   $('resetStats').addEventListener('click', async () => {
     await chrome.runtime.sendMessage({ type: 'RESET_STATS' });
+    await chrome.runtime.sendMessage({ type: 'RESET_TYPE_STATS' });
     $('totalBlocked').textContent = '0';
     $('todayBlocked').textContent = '0';
+    renderTypeStats({});
   });
 
   $('clearSiteStats').addEventListener('click', async () => {

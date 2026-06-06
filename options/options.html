@@ -31,7 +31,21 @@
           </div>
         </div>
         <button class="btn btn--danger" id="resetStats" data-i18n="optionsResetStats">Statistikanı sıfırla</button>
-        <div class="chart-wrap" id="chartWrap" data-i18n-aria-label="optionsChartAria" aria-label="7 günlük blok qrafiki"></div>
+        <div class="chart-wrap" id="chartWrap" aria-label="7 günlük blok qrafiki"></div>
+      </section>
+
+      <!-- Block type stats -->
+      <section class="card">
+        <h2 data-i18n="optionsTypeStatsTitle">Blok növü statistikası</h2>
+        <p class="hint" data-i18n="optionsTypeStatsHint">Hansı növ sorğuların bloklandığı.</p>
+        <div class="type-stats" id="typeStats">
+          <div class="type-row"><span class="type-lbl" data-i18n="typeScript">Script</span><div class="type-bar-wrap"><div class="type-bar" id="bar-script"></div></div><span class="type-cnt" id="cnt-script">0</span></div>
+          <div class="type-row"><span class="type-lbl" data-i18n="typeImage">Şəkil</span><div class="type-bar-wrap"><div class="type-bar" id="bar-image"></div></div><span class="type-cnt" id="cnt-image">0</span></div>
+          <div class="type-row"><span class="type-lbl" data-i18n="typeXhr">XHR/Fetch</span><div class="type-bar-wrap"><div class="type-bar" id="bar-xmlhttprequest"></div></div><span class="type-cnt" id="cnt-xmlhttprequest">0</span></div>
+          <div class="type-row"><span class="type-lbl" data-i18n="typeMedia">Media</span><div class="type-bar-wrap"><div class="type-bar" id="bar-media"></div></div><span class="type-cnt" id="cnt-media">0</span></div>
+          <div class="type-row"><span class="type-lbl" data-i18n="typeFrame">Frame</span><div class="type-bar-wrap"><div class="type-bar" id="bar-sub_frame"></div></div><span class="type-cnt" id="cnt-sub_frame">0</span></div>
+          <div class="type-row"><span class="type-lbl" data-i18n="typeOther">Digər</span><div class="type-bar-wrap"><div class="type-bar" id="bar-other"></div></div><span class="type-cnt" id="cnt-other">0</span></div>
+        </div>
       </section>
 
       <!-- Whitelist -->
@@ -40,10 +54,10 @@
         <p class="hint" data-i18n="optionsWhitelistHint">Bu saytlarda bloklama işləmir.</p>
         <div class="input-row">
           <input type="text" id="domainInput" placeholder="example.com"
-            data-i18n-aria-label="optionsDomainInputAria" aria-label="Sayt domen adı" autocomplete="off" spellcheck="false" />
+            aria-label="Sayt domen adı" autocomplete="off" spellcheck="false" />
           <button class="btn btn--primary" id="addDomain" data-i18n="commonAdd">Əlavə et</button>
         </div>
-        <ul class="whitelist" id="whitelistEl" data-i18n-aria-label="optionsWhitelistAria" aria-label="İcazə verilən saytlar siyahısı">
+        <ul class="whitelist" id="whitelistEl" aria-label="İcazə verilən saytlar siyahısı">
           <li class="empty-hint" id="emptyHint" data-i18n="commonEmptyList">Siyahı boşdur</li>
         </ul>
       </section>
@@ -64,10 +78,10 @@
         <p class="hint" data-i18n="optionsSelectorsHint">Öz CSS selectorlarınızı əlavə edin. Həmin elementlər bütün səhifələrdə gizlədilir.</p>
         <div class="input-row">
           <input type="text" id="selectorInput" placeholder=".banner-ad, #sidebar"
-            data-i18n-aria-label="optionsSelectorInputAria" aria-label="CSS selector" autocomplete="off" spellcheck="false" />
+            aria-label="CSS selector" autocomplete="off" spellcheck="false" />
           <button class="btn btn--primary" id="addSelector" data-i18n="commonAdd">Əlavə et</button>
         </div>
-        <ul class="whitelist" id="selectorList" data-i18n-aria-label="optionsSelectorListAria" aria-label="Xüsusi CSS selectorlar">
+        <ul class="whitelist" id="selectorList" aria-label="Xüsusi CSS selectorlar">
           <li class="empty-hint" id="selectorEmpty" data-i18n="commonEmptyList">Siyahı boşdur</li>
         </ul>
       </section>
@@ -78,12 +92,68 @@
         <p class="hint" data-i18n="optionsBlockedHint">Kontekst menyusundan və ya manual əlavə edilmiş blok siyahısı.</p>
         <div class="input-row">
           <input type="text" id="blockInput" placeholder="example.com"
-            data-i18n-aria-label="optionsBlockInputAria" aria-label="Bloklanacaq domen" autocomplete="off" spellcheck="false" />
+            aria-label="Bloklanacaq domen" autocomplete="off" spellcheck="false" />
           <button class="btn btn--primary" id="addBlock" data-i18n="commonAdd">Əlavə et</button>
         </div>
-        <ul class="whitelist" id="blockList" data-i18n-aria-label="optionsBlockedListAria" aria-label="Bloklanmış domenlər">
+        <ul class="whitelist" id="blockList" aria-label="Bloklanmış domenlər">
           <li class="empty-hint" id="blockEmpty" data-i18n="commonEmptyList">Siyahı boşdur</li>
         </ul>
+      </section>
+
+      <!-- Preferences -->
+      <section class="card">
+        <h2 data-i18n="optionsPrefsTitle">Tənzimləmələr</h2>
+
+        <div class="pref-row">
+          <div class="pref-info">
+            <div class="pref-label" data-i18n="optionsNotifLabel">Bildirişlər</div>
+            <div class="pref-hint" data-i18n="optionsNotifHint">Mərhələ bildirişlərini göstər</div>
+          </div>
+          <label class="toggle" aria-label="Notifications">
+            <input type="checkbox" id="notifToggle" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="pref-row">
+          <div class="pref-info">
+            <div class="pref-label" data-i18n="optionsBadgeColorLabel">Badge rəngi</div>
+          </div>
+          <div class="color-picker" id="colorPicker" role="group" aria-label="Badge color">
+            <button class="color-btn" data-color="red"    style="background:#e74c3c" aria-label="Red"></button>
+            <button class="color-btn" data-color="blue"   style="background:#3498db" aria-label="Blue"></button>
+            <button class="color-btn" data-color="green"  style="background:#27ae60" aria-label="Green"></button>
+            <button class="color-btn" data-color="purple" style="background:#9b59b6" aria-label="Purple"></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Adult content filter -->
+      <section class="card card--adult">
+        <h2 data-i18n="optionsAdultTitle">🔞 Yetkinlər üçün məzmun filtri</h2>
+        <p class="hint" data-i18n="optionsAdultHint">Tanınan 18+ saytları blokla. YouTube-da açar söz əsaslı filtrasiya aktivdir.</p>
+
+        <div class="pref-row">
+          <div class="pref-info">
+            <div class="pref-label" data-i18n="optionsAdultBlockLabel">18+ sayt bloklama</div>
+            <div class="pref-hint" data-i18n="optionsAdultBlockHint">Tanınan yetkin məzmun saytlarını blokla</div>
+          </div>
+          <label class="toggle" aria-label="Adult sites filter">
+            <input type="checkbox" id="adultFilterToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="pref-row">
+          <div class="pref-info">
+            <div class="pref-label" data-i18n="optionsYtFilterLabel">YouTube filtrasiyası</div>
+            <div class="pref-hint" data-i18n="optionsYtFilterHint">YouTube-da 18+ açar söz daşıyan videoları gizlət</div>
+          </div>
+          <label class="toggle" aria-label="YouTube filter">
+            <input type="checkbox" id="ytFilterToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
       </section>
 
       <!-- Filter list -->
@@ -114,17 +184,13 @@
         </a>
       </section>
 
-      <!-- About / Attribution -->
+      <!-- About -->
       <section class="card card--about">
         <h2 data-i18n="optionsAboutTitle">Haqqında</h2>
-        <p>
-          <span data-i18n="optionsAboutText">FAdblock Chrome və Firefox üçün açıq mənbəli reklam blokeridir. Manifest V3 · declarativeNetRequest · Kosmetik filtrlər · YouTube ad-skip</span>
-        </p>
+        <p><span data-i18n="optionsAboutText">FAdblock Chrome və Firefox üçün açıq mənbəli reklam blokeridir. Manifest V3 · declarativeNetRequest · Kosmetik filtrlər · YouTube ad-skip · 18+ filteri</span></p>
         <div class="author-row">
           <span class="author-label" data-i18n="optionsAuthorLabel">Müəllif</span>
-          <a class="author-link" href="https://github.com/faridasadov" target="_blank">
-            github.com/faridasadov
-          </a>
+          <a class="author-link" href="https://github.com/faridasadov" target="_blank">github.com/faridasadov</a>
         </div>
       </section>
     </main>

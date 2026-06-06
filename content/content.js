@@ -4,12 +4,10 @@
   const STYLE_ID = '__adblock_pro_css__';
   const YT_STYLE_ID = '__fadblock_youtube_css__';
 
-  const COSMETIC_SELECTORS = [
-    '.adsbygoogle', 'ins.adsbygoogle',
-    '[id^="google_ads_"]', '[id^="div-gpt-ad"]',
-    'iframe[src*="googlesyndication.com"]',
-    'iframe[src*="doubleclick.net"]',
-    'iframe[src*="googleadservices.com"]',
+  // On mail/productivity apps, skip overly-generic selectors that match UI chrome
+  const isMailApp = /^(mail\.google\.com|outlook\.live\.com|outlook\.office\.com|mail\.yahoo\.com|mail\.proton\.me)$/.test(location.hostname);
+
+  const COSMETIC_SELECTORS_GENERIC = isMailApp ? [] : [
     '.ad', '.ad-unit', '.ad-wrapper', '.ad-container', '.ad-slot',
     '.ads', '.ads-wrapper', '.ads-container',
     '#ad', '#ads', '#ad-container', '#ad-wrapper',
@@ -20,6 +18,15 @@
     '.sidebar-ad', '.sticky-ad', '.inline-ad',
     '.sponsored-content', '.sponsored-links', '.sponsored-post',
     '[class*="sponsored"]:not(article):not(section)',
+  ];
+
+  const COSMETIC_SELECTORS = [
+    '.adsbygoogle', 'ins.adsbygoogle',
+    '[id^="google_ads_"]', '[id^="div-gpt-ad"]',
+    'iframe[src*="googlesyndication.com"]',
+    'iframe[src*="doubleclick.net"]',
+    'iframe[src*="googleadservices.com"]',
+    ...COSMETIC_SELECTORS_GENERIC,
     '[id*="taboola"]', '[class*="taboola"]',
     '[id*="outbrain"]', '[class*="outbrain"]',
     '[id*="mgid"]', '[class*="mgid"]',

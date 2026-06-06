@@ -69,11 +69,44 @@
         const list = custom_selectors || [];
         if (!list.includes(selector)) {
           chrome.storage.local.set({ custom_selectors: [...list, selector] });
+          showUndoToast(selector, preview);
         }
       });
     } else {
       preview.remove();
     }
+  }
+
+  function showUndoToast(selector, preview) {
+    const old = document.getElementById('__fb_undo__');
+    if (old) old.remove();
+
+    const toast = document.createElement('div');
+    toast.id = '__fb_undo__';
+    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:2147483646;background:#1a1a2e;color:#eaeaea;font:600 13px "Segoe UI",sans-serif;padding:10px 14px;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;';
+
+    const msg = document.createElement('span');
+    msg.textContent = t('pickerUndoText');
+
+    const btn = document.createElement('button');
+    btn.textContent = t('pickerUndo');
+    btn.style.cssText = 'background:#e74c3c;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:700;';
+
+    const timer = setTimeout(() => toast.remove(), 5000);
+
+    btn.addEventListener('click', () => {
+      clearTimeout(timer);
+      chrome.storage.local.get('custom_selectors', ({ custom_selectors }) => {
+        const updated = (custom_selectors || []).filter(s => s !== selector);
+        chrome.storage.local.set({ custom_selectors: updated });
+      });
+      preview.remove();
+      toast.remove();
+    });
+
+    toast.appendChild(msg);
+    toast.appendChild(btn);
+    document.documentElement.appendChild(toast);
   }
 
   function buildSelector(el) {

@@ -1,7 +1,6 @@
 import { applyI18n, t } from '../common/i18n.js';
 
 const PAYPAL_URL = 'https://www.paypal.com/donate/?hosted_button_id=Z79A28XHU8L7S';
-
 const $ = id => document.getElementById(id);
 
 async function getActiveTab() {
@@ -19,6 +18,14 @@ function formatNumber(n) {
   return String(n);
 }
 
+function formatCountdown(ms) {
+  if (ms <= 0) return '0:00';
+  const totalSec = Math.ceil(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 function animateCount(el, target, duration = 550) {
   if (!target) return;
   const t0 = performance.now();
@@ -32,6 +39,48 @@ function animateCount(el, target, duration = 550) {
   requestAnimationFrame(tick);
 }
 
+let _pauseCountdownTimer = null;
+let _sitePauseTimer      = null;
+
+function startPauseCountdown(until) {
+  if (_pauseCountdownTimer) clearInterval(_pauseCountdownTimer);
+  $('pauseBtns').style.display  = 'none';
+  $('pauseActive').style.display = 'flex';
+
+  const update = () => {
+    const rem = until - Date.now();
+    if (rem <= 0) {
+      clearInterval(_pauseCountdownTimer);
+      $('pauseActive').style.display = 'none';
+      $('pauseBtns').style.display   = 'flex';
+      $('pauseCountdown').textContent = '';
+      return;
+    }
+    $('pauseCountdown').textContent = formatCountdown(rem);
+  };
+  update();
+  _pauseCountdownTimer = setInterval(update, 1000);
+}
+
+function startSitePauseCountdown(until) {
+  if (_sitePauseTimer) clearInterval(_sitePauseTimer);
+  $('sitePauseCountdown').style.display = '';
+  $('siteResumeBtn').style.display      = '';
+
+  const update = () => {
+    const rem = until - Date.now();
+    if (rem <= 0) {
+      clearInterval(_sitePauseTimer);
+      $('sitePauseCountdown').style.display = 'none';
+      $('siteResumeBtn').style.display      = 'none';
+      return;
+    }
+    $('sitePauseCountdown').textContent = formatCountdown(rem);
+  };
+  update();
+  _sitePauseTimer = setInterval(update, 1000);
+}
+
 async function init() {
   applyI18n();
   document.title = 'FAdblock';
@@ -43,14 +92,35 @@ async function init() {
   const { enabled } = await chrome.runtime.sendMessage({ type: 'GET_ENABLED' });
   const globalToggle = $('globalToggle');
   globalToggle.checked = enabled;
-  if (!enabled) document.getElementById('app').classList.add('is-off');
+  if (!enabled) $('app').classList.add('is-off');
 
   globalToggle.addEventListener('change', async () => {
     await chrome.runtime.sendMessage({ type: 'SET_ENABLED', enabled: globalToggle.checked });
-    document.getElementById('app').classList.toggle('is-off', !globalToggle.checked);
+    $('app').classList.toggle('is-off', !globalToggle.checked);
   });
 
-  // Site domain
+  // Global pause
+  const { remaining } = await chrome.runtime.sendMessage({ type: 'GET_PAUSE' });
+  if (remaining > 0) {
+    startPauseCountdown(Date.now() + remaining);
+  }
+
+  document.querySelectorAll('.btn-pause[data-min]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const min = parseInt(btn.dataset.min, 10);
+      const res = await chrome.runtime.sendMessage({ type: 'SET_PAUSE', minutes: min });
+      startPauseCountdown(res.until);
+    });
+  });
+
+  $('resumeBtn').addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({ type: 'SET_PAUSE', minutes: 0 });
+    if (_pauseCountdownTimer) clearInterval(_pauseCountdownTimer);
+    $('pauseActive').style.display = 'none';
+    $('pauseBtns').style.display   = 'flex';
+  });
+
+  // Site domain + site toggle
   $('siteDomain').textContent = domain || t('popupSystemPage');
 
   if (domain) {
@@ -60,6 +130,26 @@ async function init() {
 
     siteToggle.addEventListener('change', async () => {
       await chrome.runtime.sendMessage({ type: 'TOGGLE_WHITELIST', domain });
+    });
+
+    // Per-site pause
+    $('sitePauseRow').style.display = '';
+    const { remaining: siteRem } = await chrome.runtime.sendMessage({ type: 'GET_SITE_PAUSE', domain });
+    if (siteRem > 0) startSitePauseCountdown(Date.now() + siteRem);
+
+    document.querySelectorAll('.btn-pause[data-site-min]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const min = parseInt(btn.dataset.siteMin, 10);
+        const res = await chrome.runtime.sendMessage({ type: 'SET_SITE_PAUSE', domain, minutes: min });
+        startSitePauseCountdown(res.until);
+      });
+    });
+
+    $('siteResumeBtn').addEventListener('click', async () => {
+      await chrome.runtime.sendMessage({ type: 'SET_SITE_PAUSE', domain, minutes: 0 });
+      if (_sitePauseTimer) clearInterval(_sitePauseTimer);
+      $('sitePauseCountdown').style.display = 'none';
+      $('siteResumeBtn').style.display      = 'none';
     });
   } else {
     $('siteToggle').disabled = true;
@@ -76,9 +166,7 @@ async function init() {
 
   // Buttons
   $('openOptions').addEventListener('click', () => chrome.runtime.openOptionsPage());
-  $('donateBtn').addEventListener('click', () => {
-    chrome.tabs.create({ url: PAYPAL_URL });
-  });
+  $('donateBtn').addEventListener('click', () => chrome.tabs.create({ url: PAYPAL_URL }));
   $('pickBtn').addEventListener('click', async () => {
     const activeTab = await getActiveTab();
     if (activeTab?.id) {

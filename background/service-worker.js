@@ -6,10 +6,33 @@ const SITE_STATS_KEY     = 'site_stats';
 const CUSTOM_BLOCKED_KEY = 'custom_blocked';
 const HISTORY_KEY        = 'block_history';
 const FILTERS_META_KEY   = 'filters_meta';
+const PAUSE_KEY          = 'adblock_pause_until';
+const SITE_PAUSE_KEY     = 'site_pauses';
+const NOTIF_ENABLED_KEY  = 'notifications_enabled';
+const BADGE_COLOR_KEY    = 'badge_color';
+const TYPE_STATS_KEY     = 'type_stats';
+const ADULT_FILTER_KEY   = 'adult_filter_enabled';
 
 const FILTER_RULE_BASE   = 10000;
 const MAX_FILTER_RULES   = 4000;
+const ADULT_RULE_BASE    = 50000;
+const MAX_ADULT_RULES    = 200;
 const MILESTONES = [100, 500, 1000, 5000, 10000, 50000, 100000];
+
+const BADGE_COLORS = { red: '#e74c3c', blue: '#3498db', green: '#27ae60', purple: '#9b59b6' };
+
+const ADULT_DOMAINS = [
+  'pornhub.com','xvideos.com','xnxx.com','xhamster.com','redtube.com',
+  'youporn.com','tube8.com','spankbang.com','eporner.com','beeg.com',
+  'hclips.com','drtuber.com','tnaflix.com','porn.com','sex.com',
+  'brazzers.com','realitykings.com','naughtyamerica.com','bangbros.com',
+  'mofos.com','teamskeet.com','nutaku.net','gelbooru.com','e621.net',
+  'rule34.xxx','danbooru.donmai.us','furaffinity.net','nhentai.net',
+  'porno.ru','sex.ru','pornuha.ru','porno365.video',
+  'pornofoto.ru','erofond.com','18plus.com','adult.com',
+  'slutload.com','hellporno.com','fuq.com','txxx.com',
+  'keezmovies.com','gotporn.com','ashemaletube.com',
+];
 
 function t(key, substitutions) {
   return chrome.i18n.getMessage(key, substitutions) || key;
@@ -21,19 +44,27 @@ function fmtNum(n) {
   return String(n);
 }
 
-// In-memory cache for hot-path (webRequest fires on every request)
+// In-memory cache
 let _enabled   = true;
 let _whitelist = new Set();
-const _tabUrls = new Map(); // tabId → hostname
+const _tabUrls = new Map();
 
-// In-memory stats counters to avoid read-modify-write race conditions
+let _pauseUntil         = 0;
+let _sitePauses         = {};
+let _notifEnabled       = true;
+let _badgeColor         = 'red';
+let _adultFilterEnabled = false;
+
+const _typeStats = { script: 0, image: 0, xmlhttprequest: 0, media: 0, sub_frame: 0, stylesheet: 0, other: 0 };
+
 let _pendingTotal = 0;
 let _pendingToday = 0;
-const _tabCounts      = new Map(); // tabId → count
-const _pendingSiteStats = new Map(); // hostname → count
+const _tabCounts        = new Map();
+const _pendingSiteStats = new Map();
 let _flushTimer   = null;
+const _dirtyTabs  = new Set();
 
-// --- Domain list (kept in sync with generate-rules.js) ---
+// --- Domain list ---
 const AD_DOMAINS = new Set([
   'doubleclick.net','googlesyndication.com','googleadservices.com',
   'googletagservices.com','adservice.google.com',
@@ -62,16 +93,31 @@ const AD_DOMAINS = new Set([
   'inspectlet.com','bounceexchange.com',
 ]);
 
-// URL filters for webRequest — only fires for known ad domains (efficient)
 const AD_URL_FILTERS = [...AD_DOMAINS].flatMap(d => [
   `*://${d}/*`, `*://*.${d}/*`
 ]);
 
 // --- Init ---
 async function loadState() {
-  const data = await chrome.storage.local.get([ENABLED_KEY, WHITELIST_KEY]);
-  _enabled   = data[ENABLED_KEY] !== false;
-  _whitelist = new Set(data[WHITELIST_KEY] || []);
+  const data = await chrome.storage.local.get([
+    ENABLED_KEY, WHITELIST_KEY, PAUSE_KEY, SITE_PAUSE_KEY,
+    NOTIF_ENABLED_KEY, BADGE_COLOR_KEY, ADULT_FILTER_KEY
+  ]);
+  _enabled            = data[ENABLED_KEY] !== false;
+  _whitelist          = new Set(data[WHITELIST_KEY] || []);
+  _pauseUntil         = data[PAUSE_KEY] || 0;
+  _sitePauses         = data[SITE_PAUSE_KEY] || {};
+  _notifEnabled       = data[NOTIF_ENABLED_KEY] !== false;
+  _badgeColor         = data[BADGE_COLOR_KEY] || 'red';
+  _adultFilterEnabled = data[ADULT_FILTER_KEY] === true;
+
+  // Pull preferences from sync storage
+  try {
+    const sync = await chrome.storage.sync.get([NOTIF_ENABLED_KEY, BADGE_COLOR_KEY, ADULT_FILTER_KEY]);
+    if (sync[NOTIF_ENABLED_KEY] !== undefined) _notifEnabled = sync[NOTIF_ENABLED_KEY] !== false;
+    if (sync[BADGE_COLOR_KEY])                 _badgeColor   = sync[BADGE_COLOR_KEY];
+    if (sync[ADULT_FILTER_KEY] !== undefined)  _adultFilterEnabled = sync[ADULT_FILTER_KEY] === true;
+  } catch {}
 }
 loadState();
 
@@ -87,19 +133,16 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
   updateBadgeState(_enabled);
 
-  // Weekly filter list refresh alarm — only create if not already set
   chrome.alarms.get('updateFilters', existing => {
     if (!existing) chrome.alarms.create('updateFilters', { periodInMinutes: 10080 });
   });
-  // Fetch filters only on fresh install, not on updates
   chrome.storage.local.get(FILTERS_META_KEY, d => {
     if (!d[FILTERS_META_KEY]) fetchAndUpdateFilters();
   });
 
-  // Context menus
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: 'fb_pick',   title: t('contextMenuPick'), contexts: ['all'] });
-    chrome.contextMenus.create({ id: 'fb_domain', title: t('contextMenuDomain'),  contexts: ['all'] });
+    chrome.contextMenus.create({ id: 'fb_pick',   title: t('contextMenuPick'),   contexts: ['all'] });
+    chrome.contextMenus.create({ id: 'fb_domain', title: t('contextMenuDomain'), contexts: ['all'] });
   });
 });
 
@@ -121,7 +164,13 @@ chrome.commands.onCommand.addListener(async (command) => {
 });
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === 'updateFilters') fetchAndUpdateFilters();
+  if (alarm.name === 'updateFilters')  fetchAndUpdateFilters();
+  if (alarm.name === 'resumeAdblock') {
+    _pauseUntil = 0;
+    chrome.storage.local.remove(PAUSE_KEY);
+    updateBadgeState(_enabled);
+    refreshBadgesForAllTabs();
+  }
 });
 
 async function fetchAndUpdateFilters() {
@@ -157,33 +206,45 @@ async function fetchAndUpdateFilters() {
   } catch {}
 }
 
-// Keep cache in sync when storage changes
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes[ENABLED_KEY]) _enabled = changes[ENABLED_KEY].newValue !== false;
-  if (changes[WHITELIST_KEY]) _whitelist = new Set(changes[WHITELIST_KEY].newValue || []);
+  if (changes[ENABLED_KEY])     _enabled   = changes[ENABLED_KEY].newValue !== false;
+  if (changes[WHITELIST_KEY])   _whitelist = new Set(changes[WHITELIST_KEY].newValue || []);
+  if (changes[PAUSE_KEY])       _pauseUntil = changes[PAUSE_KEY].newValue || 0;
+  if (changes[SITE_PAUSE_KEY])  _sitePauses = changes[SITE_PAUSE_KEY].newValue || {};
+  if (changes[BADGE_COLOR_KEY]) { _badgeColor = changes[BADGE_COLOR_KEY].newValue || 'red'; updateBadgeState(_enabled); }
+  if (changes[NOTIF_ENABLED_KEY]) _notifEnabled = changes[NOTIF_ENABLED_KEY].newValue !== false;
 });
 
 // --- Badge ---
 function updateBadgeState(enabled) {
-  chrome.action.setBadgeBackgroundColor({ color: enabled ? '#e74c3c' : '#888' });
+  const paused = _pauseUntil > Date.now();
+  const color  = BADGE_COLORS[_badgeColor] || BADGE_COLORS.red;
+  chrome.action.setBadgeBackgroundColor({ color: (enabled && !paused) ? color : '#888' });
   chrome.action.setTitle({ title: enabled ? t('actionTitleActive') : t('actionTitleDisabled') });
   if (!enabled) {
     chrome.tabs.query({}).then(tabs => {
-      tabs.forEach(t => chrome.action.setBadgeText({ text: 'OFF', tabId: t.id }).catch(() => {}));
+      tabs.forEach(tab => chrome.action.setBadgeText({ text: 'OFF', tabId: tab.id }).catch(() => {}));
+    });
+  } else if (paused) {
+    chrome.tabs.query({}).then(tabs => {
+      tabs.forEach(tab => chrome.action.setBadgeText({ text: '||', tabId: tab.id }).catch(() => {}));
     });
   }
 }
 
 function refreshBadgesForAllTabs() {
   chrome.tabs.query({}).then(tabs => {
-    tabs.forEach((tab) => {
+    tabs.forEach(tab => {
       if (!tab.id) return;
       if (!_enabled) {
         chrome.action.setBadgeText({ text: 'OFF', tabId: tab.id }).catch(() => {});
         return;
       }
-
+      if (_pauseUntil > Date.now()) {
+        chrome.action.setBadgeText({ text: '||', tabId: tab.id }).catch(() => {});
+        return;
+      }
       const count = _tabCounts.get(tab.id) || 0;
       chrome.action.setBadgeText({
         text: count > 0 ? (count > 999 ? '1k+' : String(count)) : '',
@@ -198,7 +259,8 @@ chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
   if (change.status === 'loading' && tab.url) {
     try { _tabUrls.set(tabId, new URL(tab.url).hostname.replace(/^www\./, '')); } catch {}
     chrome.storage.session?.set({ [TAB_PREFIX + tabId]: 0 }).catch(() => {});
-    if (_enabled) chrome.action.setBadgeText({ text: '', tabId }).catch(() => {});
+    if (_enabled && _pauseUntil <= Date.now()) chrome.action.setBadgeText({ text: '', tabId }).catch(() => {});
+    else if (_pauseUntil > Date.now()) chrome.action.setBadgeText({ text: '||', tabId }).catch(() => {});
     else chrome.action.setBadgeText({ text: 'OFF', tabId }).catch(() => {});
   }
 });
@@ -209,18 +271,22 @@ chrome.tabs.onRemoved.addListener(tabId => {
   chrome.storage.session?.remove(TAB_PREFIX + tabId).catch(() => {});
 });
 
-// --- Stats via webRequest (works in production, no dev mode needed) ---
+// --- Stats via webRequest ---
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
     if (details.tabId < 0 || !_enabled) return;
+    if (_pauseUntil > Date.now()) return;
     const tabHost = _tabUrls.get(details.tabId);
     if (tabHost && _whitelist.has(tabHost)) return;
+    if (tabHost && _sitePauses[tabHost] && _sitePauses[tabHost] > Date.now()) return;
+
+    const type = details.type in _typeStats ? details.type : 'other';
+    _typeStats[type]++;
+
     incrementStats(details.tabId);
   },
   { urls: AD_URL_FILTERS }
 );
-
-const _dirtyTabs = new Set(); // tracks which tabs need session storage update
 
 function incrementStats(tabId) {
   _pendingTotal++;
@@ -247,7 +313,7 @@ function scheduleFlush() {
 async function flushStats() {
   _flushTimer = null;
   if (_pendingTotal === 0) return;
-  const delta = _pendingTotal;
+  const delta      = _pendingTotal;
   const deltaToday = _pendingToday;
   _pendingTotal = 0;
   _pendingToday = 0;
@@ -280,7 +346,6 @@ async function flushStats() {
     await chrome.storage.local.set({ [SITE_STATS_KEY]: siteStats });
   }
 
-  // Daily history (7-day chart)
   const today = new Date().toDateString();
   const hd = await chrome.storage.local.get(HISTORY_KEY);
   const history = hd[HISTORY_KEY] || {};
@@ -289,17 +354,18 @@ async function flushStats() {
   if (days.length > 7) days.slice(0, days.length - 7).forEach(d => delete history[d]);
   await chrome.storage.local.set({ [HISTORY_KEY]: history });
 
-  // Milestone notifications
-  const prevTotal = stats.total - delta;
-  for (const m of MILESTONES) {
-    if (prevTotal < m && stats.total >= m) {
-      chrome.notifications.create(`fb_milestone_${m}`, {
-        type: 'basic',
-        iconUrl: 'icons/icon48.png',
-        title: t('milestoneTitle'),
-        message: t('milestoneMessage', [fmtNum(m)])
-      }).catch(() => {});
-      break;
+  if (_notifEnabled) {
+    const prevTotal = stats.total - delta;
+    for (const m of MILESTONES) {
+      if (prevTotal < m && stats.total >= m) {
+        chrome.notifications.create(`fb_milestone_${m}`, {
+          type: 'basic',
+          iconUrl: 'icons/icon48.png',
+          title: t('milestoneTitle'),
+          message: t('milestoneMessage', [fmtNum(m)])
+        }).catch(() => {});
+        break;
+      }
     }
   }
 }
@@ -311,6 +377,7 @@ async function blockCustomDomain(domain) {
   const updated = [...list, domain];
   await chrome.storage.local.set({ [CUSTOM_BLOCKED_KEY]: updated });
   await syncCustomBlockedRules(updated);
+  chrome.storage.sync.set({ [CUSTOM_BLOCKED_KEY]: updated }).catch(() => {});
 }
 
 async function syncCustomBlockedRules(list) {
@@ -326,6 +393,21 @@ async function syncCustomBlockedRules(list) {
       condition: { urlFilter: `||${domain}^`, resourceTypes: allTypes }
     }))
   });
+}
+
+async function syncAdultFilterRules() {
+  const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const oldIds   = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_RULES).map(r => r.id);
+  const addRules = _adultFilterEnabled
+    ? ADULT_DOMAINS.slice(0, MAX_ADULT_RULES).map((domain, i) => ({
+        id: ADULT_RULE_BASE + i,
+        priority: 998,
+        action: { type: 'block' },
+        condition: { urlFilter: `||${domain}^`, resourceTypes: allTypes }
+      }))
+    : [];
+  await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules });
 }
 
 // --- Global enable / disable ---
@@ -347,14 +429,11 @@ async function setGlobalEnabled(enabled) {
   } catch {}
 }
 
-// --- Whitelist sync to DNR dynamic rules ---
+// --- Whitelist sync to DNR ---
 async function syncWhitelistRules(list) {
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const whitelistIds = existing.filter(r => r.id >= 90000 && r.id < 100000).map(r => r.id);
-  const allTypes = [
-    'main_frame','sub_frame','script','stylesheet',
-    'image','font','xmlhttprequest','media','websocket','other'
-  ];
+  const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
   await chrome.declarativeNetRequest.updateDynamicRules({
     removeRuleIds: whitelistIds,
     addRules: list.map((domain, i) => ({
@@ -369,6 +448,7 @@ async function syncWhitelistRules(list) {
 // --- Message handler ---
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   switch (msg.type) {
+
     case 'GET_STATS':
       chrome.storage.local.get(STATS_KEY)
         .then(d => sendResponse(d[STATS_KEY] || {}));
@@ -408,6 +488,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       chrome.storage.local.set({ [WHITELIST_KEY]: msg.list }).then(async () => {
         _whitelist = new Set(msg.list);
         await syncWhitelistRules(msg.list);
+        chrome.storage.sync.set({ [WHITELIST_KEY]: msg.list }).catch(() => {});
         sendResponse({ ok: true });
       });
       return true;
@@ -418,6 +499,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       _tabCounts.clear();
       _pendingSiteStats.clear();
       _dirtyTabs.clear();
+      Object.keys(_typeStats).forEach(k => _typeStats[k] = 0);
       if (_flushTimer) { clearTimeout(_flushTimer); _flushTimer = null; }
       chrome.storage.local.set({
         [STATS_KEY]: { total: 0, today: 0, lastReset: new Date().toDateString() }
@@ -451,6 +533,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const updated = (d[CUSTOM_BLOCKED_KEY] || []).filter(x => x !== msg.domain);
         await chrome.storage.local.set({ [CUSTOM_BLOCKED_KEY]: updated });
         await syncCustomBlockedRules(updated);
+        chrome.storage.sync.set({ [CUSTOM_BLOCKED_KEY]: updated }).catch(() => {});
         sendResponse({ ok: true });
       });
       return true;
@@ -468,6 +551,95 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     case 'UPDATE_FILTERS':
       fetchAndUpdateFilters().then(() => sendResponse({ ok: true }));
       return true;
+
+    // --- Pause ---
+    case 'SET_PAUSE': {
+      const ms = (msg.minutes || 0) * 60000;
+      if (ms > 0) {
+        _pauseUntil = Date.now() + ms;
+        chrome.storage.local.set({ [PAUSE_KEY]: _pauseUntil });
+        chrome.alarms.create('resumeAdblock', { when: _pauseUntil });
+      } else {
+        _pauseUntil = 0;
+        chrome.storage.local.remove(PAUSE_KEY);
+        chrome.alarms.clear('resumeAdblock');
+      }
+      updateBadgeState(_enabled);
+      refreshBadgesForAllTabs();
+      sendResponse({ ok: true, until: _pauseUntil });
+      return true;
+    }
+
+    case 'GET_PAUSE':
+      sendResponse({ until: _pauseUntil, remaining: Math.max(0, _pauseUntil - Date.now()) });
+      return true;
+
+    // --- Per-site pause ---
+    case 'SET_SITE_PAUSE': {
+      const ms = (msg.minutes || 0) * 60000;
+      if (ms > 0) {
+        _sitePauses[msg.domain] = Date.now() + ms;
+      } else {
+        delete _sitePauses[msg.domain];
+      }
+      chrome.storage.local.set({ [SITE_PAUSE_KEY]: _sitePauses });
+      sendResponse({ ok: true, until: _sitePauses[msg.domain] || 0 });
+      return true;
+    }
+
+    case 'GET_SITE_PAUSE':
+      sendResponse({
+        until: _sitePauses[msg.domain] || 0,
+        remaining: Math.max(0, (_sitePauses[msg.domain] || 0) - Date.now())
+      });
+      return true;
+
+    // --- Notifications ---
+    case 'SET_NOTIF_ENABLED':
+      _notifEnabled = !!msg.enabled;
+      chrome.storage.local.set({ [NOTIF_ENABLED_KEY]: _notifEnabled });
+      chrome.storage.sync.set({ [NOTIF_ENABLED_KEY]: _notifEnabled }).catch(() => {});
+      sendResponse({ ok: true });
+      return true;
+
+    case 'GET_NOTIF_ENABLED':
+      sendResponse({ enabled: _notifEnabled });
+      return true;
+
+    // --- Badge color ---
+    case 'SET_BADGE_COLOR':
+      _badgeColor = msg.color;
+      chrome.storage.local.set({ [BADGE_COLOR_KEY]: _badgeColor });
+      chrome.storage.sync.set({ [BADGE_COLOR_KEY]: _badgeColor }).catch(() => {});
+      updateBadgeState(_enabled);
+      sendResponse({ ok: true });
+      return true;
+
+    case 'GET_BADGE_COLOR':
+      sendResponse({ color: _badgeColor });
+      return true;
+
+    // --- Type stats ---
+    case 'GET_TYPE_STATS':
+      sendResponse({ stats: { ..._typeStats } });
+      return true;
+
+    case 'RESET_TYPE_STATS':
+      Object.keys(_typeStats).forEach(k => _typeStats[k] = 0);
+      sendResponse({ ok: true });
+      return true;
+
+    // --- Adult filter ---
+    case 'SET_ADULT_FILTER':
+      _adultFilterEnabled = !!msg.enabled;
+      chrome.storage.local.set({ [ADULT_FILTER_KEY]: _adultFilterEnabled });
+      chrome.storage.sync.set({ [ADULT_FILTER_KEY]: _adultFilterEnabled }).catch(() => {});
+      syncAdultFilterRules().then(() => sendResponse({ ok: true }));
+      return true;
+
+    case 'GET_ADULT_FILTER':
+      sendResponse({ enabled: _adultFilterEnabled });
+      return true;
   }
 });
 
@@ -478,5 +650,6 @@ async function handleToggleWhitelist(domain) {
   list = wasListed ? list.filter(d => d !== domain) : [...list, domain];
   await chrome.storage.local.set({ [WHITELIST_KEY]: list });
   await syncWhitelistRules(list);
+  chrome.storage.sync.set({ [WHITELIST_KEY]: list }).catch(() => {});
   return { whitelisted: !wasListed };
 }
