@@ -2,7 +2,7 @@
 
 Chrome və Firefox üçün açıq mənbəli, yüngül reklam bloker.
 
-![Version](https://img.shields.io/badge/version-1.0.45-red)
+![Version](https://img.shields.io/badge/version-1.0.47-red)
 ![Manifest](https://img.shields.io/badge/Manifest-V3-blue)
 ![Chrome](https://img.shields.io/badge/Chrome-✓-green)
 ![Firefox](https://img.shields.io/badge/Firefox%20128+-✓-orange)

@@ -1,11 +1,9 @@
-scripts/hooks
-scripts/test-extension.js
-scripts/generate-rules.js
-scripts/generate-icons.js
+scripts/
 node_modules
 dist
 .git
 .gitignore
+.amo-upload-uuid
 .web-ext-ignore
 package.json
 package-lock.json
