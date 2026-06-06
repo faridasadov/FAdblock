@@ -297,10 +297,7 @@
       document.body?.style?.removeProperty('overflow');
       document.documentElement?.style?.removeProperty('overflow');
 
-      const player = document.querySelector('#movie_player, .html5-video-player');
-      player?.classList.remove('ad-showing', 'ytp-hide-info-bar');
-      player?.removeAttribute('style');
-
+      // Restore playback rate only when no ad is actually playing
       const video = getYouTubeMainVideo();
       if (video && video.playbackRate > 2 && !document.querySelector('.ad-showing')) {
         video.playbackRate = 1;

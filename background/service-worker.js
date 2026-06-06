@@ -21,7 +21,9 @@ const CUSTOM_SELECTORS_KEY  = 'custom_selectors';
 const FILTER_RULE_BASE   = 10000;
 const MAX_FILTER_RULES   = 4000;
 const ADULT_RULE_BASE    = 50000;
-const MAX_ADULT_RULES    = 4000;
+const ADULT_BATCH_SIZE   = 500;   // domains per DNR rule (requestDomains array)
+const MAX_ADULT_RULES    = 20000; // max domains stored/blocked
+const MAX_ADULT_BATCHES  = Math.ceil(20000 / 500); // = 40 DNR rules
 const RECOVERY_RULE_BASE = 85000;
 const MAX_RECOVERY_RULES = 500;
 const ADULT_META_KEY     = 'adult_filter_meta';
@@ -632,15 +634,22 @@ async function _fetchBonAppetit() {
     const text = await res.text();
 
     const seen = new Set(ADULT_DOMAINS_FALLBACK);
-    const domains = [...ADULT_DOMAINS_FALLBACK];
+    const priority = [...ADULT_DOMAINS_FALLBACK]; // fallback always first
+    const rest = [];
+
     for (const line of text.split('\n')) {
-      if (domains.length >= MAX_ADULT_RULES) break;
       const domain = line.trim().toLowerCase();
       if (!domain || domain.startsWith('#') || !domain.includes('.')) continue;
       const clean = domain.startsWith('www.') ? domain.slice(4) : domain;
-      if (!seen.has(clean)) { seen.add(clean); domains.push(clean); }
+      if (seen.has(clean)) continue;
+      seen.add(clean);
+      // Prioritise Russian / CIS / adult TLDs
+      if (/\.(ru|ua|by|kz|uz|xxx|adult|porn|sex)$/.test(clean)) priority.push(clean);
+      else rest.push(clean);
+      if (priority.length + rest.length >= MAX_ADULT_RULES * 2) break; // read enough
     }
-    return domains;
+
+    return [...priority, ...rest].slice(0, MAX_ADULT_RULES);
   } catch { return []; }
 }
 
@@ -668,7 +677,9 @@ async function _fetchStevenBlack() {
 async function syncAdultFilterRules() {
   const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
-  const oldIds   = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_RULES).map(r => r.id);
+  const oldIds   = existing
+    .filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_BATCHES)
+    .map(r => r.id);
 
   if (!_adultFilterEnabled) {
     await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules: [] });
@@ -676,13 +687,20 @@ async function syncAdultFilterRules() {
   }
 
   const data = await chrome.storage.local.get(ADULT_DOMAINS_KEY);
-  const list = data[ADULT_DOMAINS_KEY]?.length ? data[ADULT_DOMAINS_KEY] : ADULT_DOMAINS_FALLBACK;
-  const addRules = list.slice(0, MAX_ADULT_RULES).map((domain, i) => ({
-    id: ADULT_RULE_BASE + i,
-    priority: 998,
-    action: { type: 'block' },
-    condition: { urlFilter: `||${domain}^`, resourceTypes: allTypes }
-  }));
+  const list = (data[ADULT_DOMAINS_KEY]?.length ? data[ADULT_DOMAINS_KEY] : ADULT_DOMAINS_FALLBACK)
+    .slice(0, MAX_ADULT_RULES);
+
+  // Batch 500 domains per rule — 1 rule covers 500 domains (far fewer rule slots used)
+  const addRules = [];
+  for (let i = 0; i < list.length; i += ADULT_BATCH_SIZE) {
+    const batch = list.slice(i, i + ADULT_BATCH_SIZE);
+    addRules.push({
+      id: ADULT_RULE_BASE + Math.floor(i / ADULT_BATCH_SIZE),
+      priority: 998,
+      action: { type: 'block' },
+      condition: { requestDomains: batch, resourceTypes: allTypes }
+    });
+  }
 
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules });
 }
