@@ -49,9 +49,12 @@
     const obs = new MutationObserver(() => {
       if (!document.getElementById(STYLE_ID)) injectCosmeticCSS();
     });
-    document.addEventListener('DOMContentLoaded', () => {
-      obs.observe(document.documentElement, { childList: true, subtree: true });
-    }, { once: true });
+    const attach = () => obs.observe(document.documentElement, { childList: true, subtree: true });
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', attach, { once: true });
+    } else {
+      attach();
+    }
   }
 
   const CUSTOM_STYLE_ID = '__adblock_custom_css__';

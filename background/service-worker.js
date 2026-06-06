@@ -404,10 +404,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         .then(d => sendResponse({ list: d[WHITELIST_KEY] || [] }));
       return true;
 
+    case 'SET_WHITELIST':
+      chrome.storage.local.set({ [WHITELIST_KEY]: msg.list }).then(async () => {
+        _whitelist = new Set(msg.list);
+        await syncWhitelistRules(msg.list);
+        sendResponse({ ok: true });
+      });
+      return true;
+
     case 'RESET_STATS':
+      _pendingTotal = 0;
+      _pendingToday = 0;
+      _tabCounts.clear();
+      _pendingSiteStats.clear();
+      _dirtyTabs.clear();
+      if (_flushTimer) { clearTimeout(_flushTimer); _flushTimer = null; }
       chrome.storage.local.set({
         [STATS_KEY]: { total: 0, today: 0, lastReset: new Date().toDateString() }
-      }).then(() => sendResponse({ ok: true }));
+      }).then(() => {
+        refreshBadgesForAllTabs();
+        sendResponse({ ok: true });
+      });
       return true;
 
     case 'GET_SITE_STATS':

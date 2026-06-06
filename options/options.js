@@ -216,7 +216,7 @@ async function importSettings(file) {
   try {
     const text = await file.text();
     const data = JSON.parse(text);
-    if (data.whitelist)         await chrome.storage.local.set({ adblock_whitelist: data.whitelist });
+    if (data.whitelist)         await chrome.runtime.sendMessage({ type: 'SET_WHITELIST', list: data.whitelist });
     if (data.custom_selectors)  await chrome.storage.local.set({ custom_selectors: data.custom_selectors });
     if (data.custom_blocked) {
       await chrome.storage.local.set({ custom_blocked: data.custom_blocked });
