@@ -86,13 +86,11 @@ async function bindSiteRules(domain) {
   const { rule } = await chrome.runtime.sendMessage({ type: 'GET_SITE_RULE', domain });
   $('siteCosmeticToggle').checked = !rule.disableCosmetic;
   $('siteCustomSelectorsToggle').checked = !rule.disableCustomSelectors;
-  $('siteYoutubeBypassToggle').checked = !rule.disableYouTubeBypass;
   $('siteSocialToggle').checked = !rule.disableSocialFilter;
 
   const bindings = [
     ['siteCosmeticToggle', 'disableCosmetic'],
     ['siteCustomSelectorsToggle', 'disableCustomSelectors'],
-    ['siteYoutubeBypassToggle', 'disableYouTubeBypass'],
     ['siteSocialToggle', 'disableSocialFilter'],
   ];
 

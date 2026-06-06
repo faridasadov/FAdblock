@@ -15,6 +15,17 @@
     'iframe[src*="googlesyndication.com"]',
     'iframe[src*="doubleclick.net"]',
     'iframe[src*="googleadservices.com"]',
+    'ytd-display-ad-renderer',
+    'ytd-promoted-sparkles-web-renderer',
+    'ytd-promoted-video-renderer',
+    'ytd-search-pyv-renderer',
+    'ytd-ad-slot-renderer',
+    'masthead-ad',
+    '#player-ads',
+    '#masthead-ad',
+    '#related ytd-display-ad-renderer',
+    '#related ytd-ad-slot-renderer',
+    'ytd-companion-slot-renderer',
     '[id*="taboola"]', '[class*="taboola"]',
     '[id*="outbrain"]', '[class*="outbrain"]',
     '[id*="mgid"]', '[class*="mgid"]',
@@ -63,15 +74,6 @@
     cosmeticActive: false,
   };
 
-  function isYouTubeWatchPage() {
-    return location.hostname.includes('youtube.com') &&
-      (/^\/watch/.test(location.pathname) || /^\/shorts\//.test(location.pathname) || /^\/live\//.test(location.pathname));
-  }
-
-  function getYouTubeMainVideo() {
-    return document.querySelector('#movie_player video, .html5-video-player video');
-  }
-
   function hasRecovery() {
     return !!(state.siteRule?.recoveryUntil && state.siteRule.recoveryUntil > Date.now());
   }
@@ -85,7 +87,12 @@
   }
 
   function effectiveYouTubeBypassEnabled() {
-    return state.enabled && !hasRecovery() && state.categories.youtubeBypass !== false && !state.siteRule.disableYouTubeBypass;
+    return state.enabled && !hasRecovery() && state.categories.youtubeBypass !== false;
+  }
+
+  function isYouTubeWatchPage() {
+    return location.hostname.includes('youtube.com') &&
+      (/^\/watch/.test(location.pathname) || /^\/shorts\//.test(location.pathname) || /^\/live\//.test(location.pathname));
   }
 
   function injectSpecificCosmeticCSS() {
@@ -189,13 +196,13 @@
     syncCosmeticState();
     applyCustomSelectors(state.customSelectors);
     if (isYouTubeWatchPage()) {
-      if (effectiveYouTubeBypassEnabled()) setupYouTubeAdBypass();
-      else teardownYouTubeBypass();
+      if (effectiveYouTubeBypassEnabled()) setupYouTubeOverlayCleanup();
+      else teardownYouTubeOverlayCleanup();
     }
   }
 
   function refreshStateFromStorage(changes) {
-    if (changes.adblock_enabled) state.enabled = changes.adblock_enabled.newValue !== false;
+    if ('adblock_enabled' in changes) state.enabled = changes.adblock_enabled.newValue !== false;
     if (changes.custom_selectors) state.customSelectors = changes.custom_selectors.newValue || [];
     if (changes[CATEGORY_SETTINGS_KEY]) state.categories = { ...DEFAULT_CATEGORY_SETTINGS, ...(changes[CATEGORY_SETTINGS_KEY].newValue || {}) };
     if (changes[SITE_RULES_KEY]) state.siteRule = (changes[SITE_RULES_KEY].newValue || {})[HOST] || {};
@@ -219,18 +226,12 @@
     refreshStateFromStorage(changes);
   });
 
-  function setupYouTubeAdBypass() {
-    const shared = window.__fadblockYoutubeBypassState || (window.__fadblockYoutubeBypassState = {
-      timer: null,
+  function setupYouTubeOverlayCleanup() {
+    const shared = window.__fadblockYoutubeOverlayState || (window.__fadblockYoutubeOverlayState = {
       observer: null,
-      scheduled: false,
-      lastRun: 0,
-      lastForcedSeekAt: 0,
       navHandler: null,
-      unloadHandler: null,
+      scheduled: false,
     });
-
-    if (shared.timer || shared.observer) return;
 
     function injectYouTubeCSS() {
       if (document.getElementById(YT_STYLE_ID)) return;
@@ -269,9 +270,6 @@
     }
 
     function clearYouTubeEnforcement() {
-      const now = Date.now();
-      if (now - shared.lastRun < 100) return;
-      shared.lastRun = now;
       injectYouTubeCSS();
       if (!isYouTubeWatchPage()) return;
 
@@ -280,8 +278,7 @@
         'yt-playability-error-supported-renderers',
         'tp-yt-paper-dialog',
         'ytd-popup-container',
-        'ytd-watch-flexy[player-unavailable]',
-        'ytmusic-you-there-renderer'
+        'ytd-watch-flexy[player-unavailable]'
       ].join(','));
 
       candidates.forEach((el) => {
@@ -294,19 +291,16 @@
         el.style?.setProperty('display', 'none', 'important');
       });
 
+      document.querySelector('ytd-watch-flexy[player-unavailable]')?.removeAttribute('player-unavailable');
+      document.querySelector('yt-playability-error-supported-renderers')?.remove?.();
+      document.querySelector('#error-screen')?.style?.setProperty('display', 'none', 'important');
+      document.querySelector('.ytp-error')?.style?.setProperty('display', 'none', 'important');
+
       document.body?.style?.removeProperty('overflow');
       document.documentElement?.style?.removeProperty('overflow');
-
-      // Restore playback rate only when no ad is actually playing
-      const video = getYouTubeMainVideo();
-      if (video && video.playbackRate > 2 && !document.querySelector('.ad-showing')) {
-        video.playbackRate = 1;
-      }
-
-      document.querySelector('yt-playability-error-supported-renderers')?.remove();
     }
 
-    function scheduleEnforcementClear() {
+    function scheduleClear() {
       if (shared.scheduled) return;
       shared.scheduled = true;
       requestAnimationFrame(() => {
@@ -315,65 +309,8 @@
       });
     }
 
-    function tick() {
-      if (!isYouTubeWatchPage() || !effectiveYouTubeBypassEnabled()) return;
-      let nextDelay = 1000;
-      const skipBtn = document.querySelector([
-        '.ytp-skip-ad-button',
-        '.ytp-skip-ad-button-modern',
-        '.ytp-ad-skip-button-container button',
-        '.ytp-skip-ad-button-container button',
-        'button[class*="skip-ad"]'
-      ].join(', '));
-      if (skipBtn) {
-        skipBtn.click();
-        nextDelay = 80;
-      } else {
-        const video = getYouTubeMainVideo();
-        const player = document.querySelector('#movie_player, .html5-video-player');
-        // .video-ads is always in the DOM even without ads — use .ad-showing on player instead
-        const isAd = document.querySelector('.ad-showing, .ytp-ad-player-overlay, .ytp-ad-preview-container');
-        if (video && isAd && !video.ended) {
-          if (!video.muted) video.muted = true;
-          if (video.playbackRate < 16) video.playbackRate = 16;
-          if (typeof video.play === 'function') {
-            const promise = video.play();
-            if (promise?.catch) promise.catch(() => {});
-          }
-
-          if (Number.isFinite(video.duration) && video.duration > 0) {
-            const remaining = video.duration - video.currentTime;
-            if (remaining > 0.35) {
-              const target = Math.max(video.currentTime, video.duration - 0.12);
-              try {
-                if (typeof video.fastSeek === 'function') video.fastSeek(target);
-                else video.currentTime = target;
-              } catch {}
-              if (typeof player?.seekTo === 'function') {
-                try { player.seekTo(target, true); } catch {}
-              }
-              shared.lastForcedSeekAt = Date.now();
-              nextDelay = 80;
-            } else {
-              nextDelay = 120; // near end — poll fast to catch ad finish
-            }
-          } else {
-            // Duration unknown (live or long preroll) — jump ahead aggressively
-            try { video.currentTime = video.currentTime + 30; } catch {}
-            nextDelay = 80;
-          }
-        }
-      }
-      shared.timer = setTimeout(tick, nextDelay);
-    }
-
-    function startTick() {
-      if (shared.timer) clearTimeout(shared.timer);
-      scheduleEnforcementClear();
-      shared.timer = setTimeout(tick, 250);
-    }
-
-    startTick();
+    injectYouTubeCSS();
+    scheduleClear();
     shared.observer?.disconnect();
     shared.observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
@@ -383,40 +320,35 @@
             node.matches?.('ytd-enforcement-message-view-model, yt-playability-error-supported-renderers, tp-yt-paper-dialog, ytd-popup-container, ytd-watch-flexy[player-unavailable]') ||
             node.querySelector?.('ytd-enforcement-message-view-model, yt-playability-error-supported-renderers')
           ) {
-            scheduleEnforcementClear();
+            scheduleClear();
             return;
           }
         }
       }
     });
     shared.observer.observe(document.documentElement, { childList: true, subtree: true });
-    shared.navHandler = () => {
-      if (isYouTubeWatchPage() && effectiveYouTubeBypassEnabled()) startTick();
-      else teardownYouTubeBypass();
-    };
-    document.addEventListener('yt-navigate-finish', shared.navHandler);
-    shared.unloadHandler = teardownYouTubeBypass;
-    window.addEventListener('pagehide', shared.unloadHandler, { once: true });
+    if (!shared.navHandler) {
+      shared.navHandler = () => {
+        if (isYouTubeWatchPage() && effectiveYouTubeBypassEnabled()) scheduleClear();
+        else teardownYouTubeOverlayCleanup();
+      };
+      document.addEventListener('yt-navigate-finish', shared.navHandler);
+    }
   }
 
-  function teardownYouTubeBypass() {
-    const shared = window.__fadblockYoutubeBypassState;
+  function teardownYouTubeOverlayCleanup() {
+    const shared = window.__fadblockYoutubeOverlayState;
     if (!shared) {
       document.getElementById(YT_STYLE_ID)?.remove();
       return;
     }
-    if (shared.timer) clearTimeout(shared.timer);
-    shared.timer = null;
     shared.observer?.disconnect();
     shared.observer = null;
     if (shared.navHandler) {
       document.removeEventListener('yt-navigate-finish', shared.navHandler);
       shared.navHandler = null;
     }
-    if (shared.unloadHandler) {
-      window.removeEventListener('pagehide', shared.unloadHandler);
-      shared.unloadHandler = null;
-    }
     document.getElementById(YT_STYLE_ID)?.remove();
   }
+
 })();

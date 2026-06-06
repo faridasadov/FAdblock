@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.0.53",
+  "version": "1.0.69",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "permissions": [
@@ -31,6 +31,16 @@
     "type": "module"
   },
   "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
+      "js": [
+        "content/youtube-inject.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    },
     {
       "matches": [
         "<all_urls>"
@@ -105,6 +115,11 @@
         "id": "adblock_main",
         "enabled": true,
         "path": "rules/rules.json"
+      },
+      {
+        "id": "youtube_ads",
+        "enabled": true,
+        "path": "rules/youtube-rules.json"
       }
     ]
   },

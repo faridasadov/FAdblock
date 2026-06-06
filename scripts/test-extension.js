@@ -118,8 +118,8 @@ async function testFirefox() {
   check(res,'gecko id',                      !!mf.browser_specific_settings?.gecko?.id);
 
   const cs=fs.readFileSync(path.join(EXT_PATH,'content','content.js'),'utf8');
-  check(res,'YouTube bypass kodu',           cs.includes('setupYouTubeAdBypass'));
   check(res,'Global state yoxlaması',        cs.includes('adblock_enabled'));
+  check(res,'YouTube ruleset mövcuddur',     Array.isArray(mf.declarative_net_request?.rule_resources) && mf.declarative_net_request.rule_resources.some(r => r.id === 'youtube_ads'));
 
   const rules=JSON.parse(fs.readFileSync(path.join(EXT_PATH,'rules','rules.json'),'utf8'));
   check(res,`rules.json ${rules.length} qayda`, rules.length>=90);

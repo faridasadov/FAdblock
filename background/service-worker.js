@@ -20,6 +20,16 @@ const CUSTOM_SELECTORS_KEY  = 'custom_selectors';
 
 const FILTER_RULE_BASE   = 10000;
 const MAX_FILTER_RULES   = 4000;
+const ADULT_KW_RULE_BASE = 49000;
+const ADULT_KW_PATTERNS  = [
+  '^https?://[^/?#]+\\.xxx([/?#]|$)',    // *.xxx TLD
+  '^https?://[^/?#]+\\.adult([/?#]|$)', // *.adult TLD
+  '^https?://[^/?#]+\\.porn([/?#]|$)',  // *.porn TLD
+  '^https?://[^/?#]*porno',             // "porno" anywhere in hostname
+  '^https?://(www\\.)?sex',             // hostname starts with "sex"
+  '^https?://[^/?#]*\\.sex\\.',         // ".sex." label in hostname
+  '^https?://(www\\.)?xxx',             // hostname starts with "xxx"
+];
 const ADULT_RULE_BASE    = 50000;
 const ADULT_BATCH_SIZE   = 500;   // domains per DNR rule (requestDomains array)
 const MAX_ADULT_RULES    = 20000; // max domains stored/blocked
@@ -63,6 +73,7 @@ const ADULT_DOMAINS_FALLBACK = [
   'sexpics.ru','pornolab.net','trachtube.com','russkieporno.ru',
   'porno365.ru','sexfilmi.ru','porno-go.ru','pussyspace.com',
   'pussyspace.net','trahnuli.com','nashe-porno.ru','seks-video.ru',
+  '2porno365.run','sex-studentki.live','sex-studentki.ru',
 ];
 
 function t(key, substitutions) {
@@ -130,6 +141,14 @@ const AD_URL_FILTERS = [...AD_DOMAINS].flatMap(d => [
   `*://${d}/*`, `*://*.${d}/*`
 ]);
 
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('FAdblock service worker unhandled rejection:', event.reason);
+});
+
+self.addEventListener('error', (event) => {
+  console.error('FAdblock service worker error:', event.message, event.filename, event.lineno, event.colno);
+});
+
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
@@ -170,7 +189,6 @@ function cleanupSiteRulesObject(siteRules) {
     const cleaned = {};
     if (rule.disableCosmetic) cleaned.disableCosmetic = true;
     if (rule.disableCustomSelectors) cleaned.disableCustomSelectors = true;
-    if (rule.disableYouTubeBypass) cleaned.disableYouTubeBypass = true;
     if (rule.disableYouTubeFilter) cleaned.disableYouTubeFilter = true;
     if (rule.disableSocialFilter) cleaned.disableSocialFilter = true;
     if (rule.recoveryUntil && rule.recoveryUntil > Date.now()) cleaned.recoveryUntil = rule.recoveryUntil;
@@ -181,7 +199,8 @@ function cleanupSiteRulesObject(siteRules) {
 
 function getRequestLogLabel(ruleId) {
   if (ruleId >= FILTER_RULE_BASE && ruleId < FILTER_RULE_BASE + MAX_FILTER_RULES) return 'dynamic-filter';
-  if (ruleId >= ADULT_RULE_BASE && ruleId < ADULT_RULE_BASE + MAX_ADULT_RULES) return 'adult-filter';
+  if (ruleId >= ADULT_KW_RULE_BASE && ruleId < ADULT_KW_RULE_BASE + ADULT_KW_PATTERNS.length + 10) return 'adult-keyword';
+  if (ruleId >= ADULT_RULE_BASE && ruleId < ADULT_RULE_BASE + MAX_ADULT_BATCHES) return 'adult-filter';
   if (ruleId >= 70000 && ruleId < 80000) return 'custom-block';
   if (ruleId >= RECOVERY_RULE_BASE && ruleId < RECOVERY_RULE_BASE + MAX_RECOVERY_RULES) return 'site-recovery';
   if (ruleId >= 90000 && ruleId < 100000) return 'whitelist';
@@ -273,64 +292,82 @@ async function loadState() {
   const hasFilterRules = existing.some(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES);
   if (_categorySettings.network !== false && !hasFilterRules) fetchAndUpdateFilters().catch(() => {});
 }
-loadState();
+loadState().catch((error) => {
+  console.error('FAdblock loadState failed:', error);
+});
 
 chrome.runtime.onStartup.addListener(() => {
-  loadState().catch(() => {});
+  loadState().catch((error) => {
+    console.error('FAdblock onStartup loadState failed:', error);
+  });
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
-  const data = await chrome.storage.local.get([
-    STATS_KEY, ENABLED_KEY, WHITELIST_KEY, CUSTOM_BLOCKED_KEY,
-    CATEGORY_SETTINGS_KEY, SITE_RULES_KEY
-  ]);
-  if (!data[STATS_KEY]) {
-    await chrome.storage.local.set({
-      [STATS_KEY]: { total: 0, today: 0, lastReset: new Date().toDateString() }
+  try {
+    const data = await chrome.storage.local.get([
+      STATS_KEY, ENABLED_KEY, WHITELIST_KEY, CUSTOM_BLOCKED_KEY,
+      CATEGORY_SETTINGS_KEY, SITE_RULES_KEY
+    ]);
+    if (!data[STATS_KEY]) {
+      await chrome.storage.local.set({
+        [STATS_KEY]: { total: 0, today: 0, lastReset: new Date().toDateString() }
+      });
+    }
+    if (data[ENABLED_KEY] === undefined) {
+      await chrome.storage.local.set({ [ENABLED_KEY]: true });
+    }
+    await syncWhitelistRules(data[WHITELIST_KEY] || []);
+    await syncCustomBlockedRules(data[CUSTOM_BLOCKED_KEY] || []);
+    _categorySettings = mergeCategorySettings(data[CATEGORY_SETTINGS_KEY]);
+    _siteRules = cleanupSiteRulesObject(data[SITE_RULES_KEY] || {});
+    await syncSiteRecoveryRules();
+    await syncBlockingRulesState();
+    updateBadgeState(_enabled);
+
+    chrome.alarms.get('updateFilters', existing => {
+      if (!existing) chrome.alarms.create('updateFilters', { periodInMinutes: 10080 });
     });
-  }
-  if (data[ENABLED_KEY] === undefined) {
-    await chrome.storage.local.set({ [ENABLED_KEY]: true });
-  }
-  await syncWhitelistRules(data[WHITELIST_KEY] || []);
-  await syncCustomBlockedRules(data[CUSTOM_BLOCKED_KEY] || []);
-  _categorySettings = mergeCategorySettings(data[CATEGORY_SETTINGS_KEY]);
-  _siteRules = cleanupSiteRulesObject(data[SITE_RULES_KEY] || {});
-  await syncSiteRecoveryRules();
-  await syncBlockingRulesState();
-  updateBadgeState(_enabled);
+    chrome.alarms.get('updateAdultFilter', existing => {
+      if (!existing) chrome.alarms.create('updateAdultFilter', { periodInMinutes: 10080 });
+    });
+    chrome.storage.local.get(FILTERS_META_KEY, d => {
+      if (!d[FILTERS_META_KEY]) fetchAndUpdateFilters().catch((error) => {
+        console.error('FAdblock initial filter fetch failed:', error);
+      });
+    });
 
-  chrome.alarms.get('updateFilters', existing => {
-    if (!existing) chrome.alarms.create('updateFilters', { periodInMinutes: 10080 });
-  });
-  chrome.alarms.get('updateAdultFilter', existing => {
-    if (!existing) chrome.alarms.create('updateAdultFilter', { periodInMinutes: 10080 });
-  });
-  chrome.storage.local.get(FILTERS_META_KEY, d => {
-    if (!d[FILTERS_META_KEY]) fetchAndUpdateFilters();
-  });
-
-  chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: 'fb_pick',   title: t('contextMenuPick'),   contexts: ['all'] });
-    chrome.contextMenus.create({ id: 'fb_domain', title: t('contextMenuDomain'), contexts: ['all'] });
-  });
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({ id: 'fb_pick',   title: t('contextMenuPick'),   contexts: ['all'] });
+      chrome.contextMenus.create({ id: 'fb_domain', title: t('contextMenuDomain'), contexts: ['all'] });
+    });
+  } catch (error) {
+    console.error('FAdblock onInstalled failed:', error);
+  }
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (!tab?.id) return;
-  if (info.menuItemId === 'fb_pick') {
-    chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_PICKER' }).catch(() => {});
-  } else if (info.menuItemId === 'fb_domain') {
-    const raw = info.linkUrl || info.pageUrl;
-    try {
-      const domain = new URL(raw).hostname.replace(/^www\./, '');
-      await blockCustomDomain(domain);
-    } catch {}
+  try {
+    if (!tab?.id) return;
+    if (info.menuItemId === 'fb_pick') {
+      chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_PICKER' }).catch(() => {});
+    } else if (info.menuItemId === 'fb_domain') {
+      const raw = info.linkUrl || info.pageUrl;
+      try {
+        const domain = new URL(raw).hostname.replace(/^www\./, '');
+        await blockCustomDomain(domain);
+      } catch {}
+    }
+  } catch (error) {
+    console.error('FAdblock context menu handler failed:', error);
   }
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
-  if (command === 'toggle-adblock') await setGlobalEnabled(!_enabled);
+  try {
+    if (command === 'toggle-adblock') await setGlobalEnabled(!_enabled);
+  } catch (error) {
+    console.error('FAdblock command handler failed:', error);
+  }
 });
 
 chrome.alarms.onAlarm.addListener(alarm => {
@@ -643,10 +680,11 @@ async function _fetchBonAppetit() {
       const clean = domain.startsWith('www.') ? domain.slice(4) : domain;
       if (seen.has(clean)) continue;
       seen.add(clean);
-      // Prioritise Russian / CIS / adult TLDs
-      if (/\.(ru|ua|by|kz|uz|xxx|adult|porn|sex)$/.test(clean)) priority.push(clean);
+      // Prioritise by TLD or by keyword in domain name
+      const isPriorityTld = /\.(ru|ua|by|kz|uz|xxx|adult|porn|sex)$/.test(clean);
+      const isPriorityKw  = /porno|porn|sex|xxx|nude|hentai|erotic|milf|fetish|onlyfan|camgirl|adult/.test(clean);
+      if (isPriorityTld || isPriorityKw) priority.push(clean);
       else rest.push(clean);
-      if (priority.length + rest.length >= MAX_ADULT_RULES * 2) break; // read enough
     }
 
     return [...priority, ...rest].slice(0, MAX_ADULT_RULES);
@@ -674,7 +712,31 @@ async function _fetchStevenBlack() {
   } catch { return []; }
 }
 
+async function syncAdultKeywordRules() {
+  const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const oldIds   = existing
+    .filter(r => r.id >= ADULT_KW_RULE_BASE && r.id < ADULT_KW_RULE_BASE + ADULT_KW_PATTERNS.length + 10)
+    .map(r => r.id);
+
+  if (!_adultFilterEnabled) {
+    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules: [] });
+    return;
+  }
+
+  const addRules = ADULT_KW_PATTERNS.map((regexFilter, i) => ({
+    id: ADULT_KW_RULE_BASE + i,
+    priority: 999,
+    action: { type: 'block' },
+    condition: { regexFilter, isUrlFilterCaseSensitive: false, resourceTypes: allTypes }
+  }));
+
+  await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules });
+}
+
 async function syncAdultFilterRules() {
+  await syncAdultKeywordRules();
+
   const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const oldIds   = existing
@@ -690,7 +752,6 @@ async function syncAdultFilterRules() {
   const list = (data[ADULT_DOMAINS_KEY]?.length ? data[ADULT_DOMAINS_KEY] : ADULT_DOMAINS_FALLBACK)
     .slice(0, MAX_ADULT_RULES);
 
-  // Batch 500 domains per rule — 1 rule covers 500 domains (far fewer rule slots used)
   const addRules = [];
   for (let i = 0; i < list.length; i += ADULT_BATCH_SIZE) {
     const batch = list.slice(i, i + ADULT_BATCH_SIZE);
@@ -725,20 +786,29 @@ async function syncSiteRecoveryRules() {
 
 async function syncBlockingRulesState() {
   const shouldEnableNetwork = _enabled && _categorySettings.network !== false;
+  const shouldEnableYouTubeRules = shouldEnableNetwork && _categorySettings.youtubeBypass !== false;
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
-  const filterIds = existing.filter(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES).map(r => r.id);
-  const adultIds = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_RULES).map(r => r.id);
-  const customIds = existing.filter(r => r.id >= 70000 && r.id < 80000).map(r => r.id);
+  const filterIds  = existing.filter(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES).map(r => r.id);
+  const adultKwIds = existing.filter(r => r.id >= ADULT_KW_RULE_BASE && r.id < ADULT_KW_RULE_BASE + ADULT_KW_PATTERNS.length + 10).map(r => r.id);
+  const adultIds   = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_BATCHES).map(r => r.id);
+  const customIds  = existing.filter(r => r.id >= 70000 && r.id < 80000).map(r => r.id);
 
   await chrome.declarativeNetRequest.updateEnabledRulesets(
-    shouldEnableNetwork
-      ? { enableRulesetIds: ['adblock_main'], disableRulesetIds: [] }
-      : { enableRulesetIds: [], disableRulesetIds: ['adblock_main'] }
+    {
+      enableRulesetIds: [
+        ...(shouldEnableNetwork ? ['adblock_main'] : []),
+        ...(shouldEnableYouTubeRules ? ['youtube_ads'] : []),
+      ],
+      disableRulesetIds: [
+        ...(shouldEnableNetwork ? [] : ['adblock_main']),
+        ...(shouldEnableYouTubeRules ? [] : ['youtube_ads']),
+      ]
+    }
   );
 
   if (!shouldEnableNetwork) {
     await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [...filterIds, ...adultIds, ...customIds],
+      removeRuleIds: [...filterIds, ...adultKwIds, ...adultIds, ...customIds],
       addRules: []
     });
     return;

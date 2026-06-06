@@ -41,7 +41,7 @@
     document.querySelectorAll(
       '[data-testid="post-container"], .Post, shreddit-post, [data-fullname]'
     ).forEach(el => {
-      if (el.__fbFiltered) return;
+      if (el.hasAttribute(FB_ATTR)) return;
       if (el.querySelector('[data-testid="nsfw-badge"], .nsfw-flair') ||
           el.getAttribute('data-nsfw') === 'true' ||
           el.closest('[data-nsfw="true"]')) {
@@ -57,7 +57,7 @@
     document.querySelectorAll(
       '[class*="DivItemContainerV2"], [class*="VideoFeedItem"], article[data-e2e]'
     ).forEach(el => {
-      if (el.__fbFiltered) return;
+      if (el.hasAttribute(FB_ATTR)) return;
       const desc = el.querySelector('[data-e2e="video-desc"], [class*="SpanText"]')?.textContent || '';
       if (hasKeyword(desc)) hideEl(el);
     });
@@ -66,7 +66,7 @@
   // ---- Twitter / X: keyword in tweet text ----
   function filterTwitter() {
     document.querySelectorAll('article[data-testid="tweet"]').forEach(el => {
-      if (el.__fbFiltered) return;
+      if (el.hasAttribute(FB_ATTR)) return;
       const text = el.querySelector('[data-testid="tweetText"]')?.textContent || '';
       if (hasKeyword(text)) hideEl(el);
     });

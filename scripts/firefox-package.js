@@ -22,6 +22,17 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 
+  const localesDir = path.join(stageDir, '_locales');
+  for (const lang of fs.readdirSync(localesDir)) {
+    const msgPath = path.join(localesDir, lang, 'messages.json');
+    if (!fs.existsSync(msgPath)) continue;
+    const msgs = JSON.parse(fs.readFileSync(msgPath, 'utf8'));
+    if (msgs.extDescription?.message) {
+      msgs.extDescription.message = msgs.extDescription.message.replace(/Chrome/g, 'Firefox');
+    }
+    fs.writeFileSync(msgPath, JSON.stringify(msgs, null, 2) + '\n');
+  }
+
   return stageDir;
 }
 

@@ -2,7 +2,7 @@
 
 Chrome və Firefox üçün açıq mənbəli, yüngül reklam bloker.
 
-![Version](https://img.shields.io/badge/version-1.0.53-red)
+![Version](https://img.shields.io/badge/version-1.0.69-red)
 ![Manifest](https://img.shields.io/badge/Manifest-V3-blue)
 ![Chrome](https://img.shields.io/badge/Chrome-✓-green)
 ![Firefox](https://img.shields.io/badge/Firefox%20128+-✓-orange)
@@ -27,7 +27,7 @@ Chrome və Firefox üçün açıq mənbəli, yüngül reklam bloker.
 - **Kosmetik filtrlər** — `.adsbygoogle`, `#taboola`, `.advertisement` və digər reklam elementlərini CSS ilə gizlədir
 - **Element seçici** — İstənilən elementə klikləyib onu daima gizlət (popup-dan ⊙ düyməsi)
 - **Xüsusi CSS filtrlər** — Öz CSS selectorlarını əlavə et, bütün səhifələrdə tətbiq olunur
-- **YouTube reklamları** — Skip düyməsini avtomatik basır, atlana bilməyən reklamları sürətlə keçir
+- **YouTube reklamları** — YouTube reklam endpoint-lərini və əlaqəli ad request-lərini şəbəkə səviyyəsində bloklayır
 - **Global on/off** — `Alt+Shift+A` qısayolu və ya popup toggle ilə
 - **Sayt-xüsusi toggle** — İstənilən domenə aid bloklamanı söndür / whitelist
 - **Badge sayacı** — Hər səhifədə neçə reklam bloklandığını göstərir
