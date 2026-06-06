@@ -12,11 +12,12 @@
     'seks','sikis','sikish','sikiş','pornografi',
   ];
 
-  const host     = location.hostname;
+  const host      = location.hostname;
   const cleanHost = host.replace(/^www\./, '');
-  const isReddit  = host.includes('reddit.com');
-  const isTikTok  = host.includes('tiktok.com');
-  const isTwitter = host.includes('twitter.com') || host.includes('x.com');
+  const isReddit  = host === 'reddit.com' || host.endsWith('.reddit.com');
+  const isTikTok  = host === 'tiktok.com' || host.endsWith('.tiktok.com');
+  const isTwitter = host === 'twitter.com' || host.endsWith('.twitter.com') ||
+                    host === 'x.com'       || host.endsWith('.x.com');
 
   let enabled = false;
   let observer = null;
@@ -28,8 +29,10 @@
     return KEYWORDS.some(kw => lower.includes(kw));
   }
 
+  const FB_ATTR = 'data-fb-social-hidden';
+
   function hideEl(el) {
-    el.__fbFiltered = true;
+    el.setAttribute(FB_ATTR, '1');
     el.style.setProperty('display', 'none', 'important');
   }
 
@@ -93,8 +96,9 @@
   }
 
   function restoreAll() {
-    document.querySelectorAll('[style*="display: none"]').forEach(el => {
-      if (el.__fbFiltered) { el.__fbFiltered = false; el.style.removeProperty('display'); }
+    document.querySelectorAll(`[${FB_ATTR}]`).forEach(el => {
+      el.removeAttribute(FB_ATTR);
+      el.style.removeProperty('display');
     });
   }
 
@@ -115,4 +119,8 @@
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') chrome.storage.local.get([KEY, CATEGORY_SETTINGS_KEY, SITE_RULES_KEY], resolveState);
   });
+  // Reddit / Twitter are SPAs — re-filter on client-side navigation
+  if (isReddit || isTwitter) {
+    window.addEventListener('popstate', () => { if (enabled) scheduleFilter(); });
+  }
 })();

@@ -20,8 +20,8 @@
     '[id*="mgid"]', '[class*="mgid"]',
     '.OUTBRAIN', '#taboola-below-article',
     '.popup-ad', '.pop-up-ad', '.overlay-ad',
+    // YouTube overlay ads only — NOT .video-ads (breaks player) or .ytp-ad-skip-button-container (we click it)
     '.ytp-ad-overlay-container', '.ytp-ad-text-overlay',
-    '.ytp-ad-skip-button-container', '.video-ads',
     '[data-adtype]', '[data-ad-comet-type]',
   ];
 
@@ -202,6 +202,9 @@
     applyState();
   }
 
+  // Inject CSS immediately to prevent ad flash. Storage response may remove it if disabled.
+  injectSpecificCosmeticCSS();
+  state.cosmeticActive = true;
   ensureBaseObserver();
   chrome.storage.local.get(['adblock_enabled', 'custom_selectors', CATEGORY_SETTINGS_KEY, SITE_RULES_KEY], (data) => {
     state.enabled = data.adblock_enabled !== false;
@@ -331,7 +334,8 @@
       } else {
         const video = getYouTubeMainVideo();
         const player = document.querySelector('#movie_player, .html5-video-player');
-        const isAd = document.querySelector('.ad-showing, .ytp-ad-player-overlay, .ytp-ad-preview-container, .video-ads');
+        // .video-ads is always in the DOM even without ads — use .ad-showing on player instead
+        const isAd = document.querySelector('.ad-showing, .ytp-ad-player-overlay, .ytp-ad-preview-container');
         if (video && isAd && !video.ended) {
           if (!video.muted) video.muted = true;
           if (video.playbackRate < 16) video.playbackRate = 16;
@@ -340,20 +344,26 @@
             if (promise?.catch) promise.catch(() => {});
           }
 
-          const remaining = Number.isFinite(video.duration) ? (video.duration - video.currentTime) : Infinity;
-          if (remaining > 0.35) {
-            const target = Math.max(video.currentTime, video.duration - 0.12);
-            try {
-              if (typeof video.fastSeek === 'function') video.fastSeek(target);
-              else video.currentTime = target;
-            } catch {}
-            if (typeof player?.seekTo === 'function') {
-              try { player.seekTo(target, true); } catch {}
+          if (Number.isFinite(video.duration) && video.duration > 0) {
+            const remaining = video.duration - video.currentTime;
+            if (remaining > 0.35) {
+              const target = Math.max(video.currentTime, video.duration - 0.12);
+              try {
+                if (typeof video.fastSeek === 'function') video.fastSeek(target);
+                else video.currentTime = target;
+              } catch {}
+              if (typeof player?.seekTo === 'function') {
+                try { player.seekTo(target, true); } catch {}
+              }
+              shared.lastForcedSeekAt = Date.now();
+              nextDelay = 80;
+            } else {
+              nextDelay = 120; // near end — poll fast to catch ad finish
             }
-            shared.lastForcedSeekAt = Date.now();
+          } else {
+            // Duration unknown (live or long preroll) — jump ahead aggressively
+            try { video.currentTime = video.currentTime + 30; } catch {}
             nextDelay = 80;
-          } else if (Date.now() - shared.lastForcedSeekAt > 250) {
-            nextDelay = 120;
           }
         }
       }

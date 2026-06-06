@@ -1203,7 +1203,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             if (!d[ADULT_META_KEY]) fetchAndUpdateAdultRules().catch(() => {});
           });
         }
-        syncAdultFilterRules().then(() => sendResponse({ ok: true }));
+        sendResponse({ ok: true });
       });
       return true;
 
