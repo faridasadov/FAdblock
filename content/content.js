@@ -52,9 +52,14 @@
     document.getElementById(YT_STYLE_ID)?.remove();
   }
 
+  let _cosmeticActive = false;
+
   function startObserver() {
     const obs = new MutationObserver(() => {
-      if (!document.getElementById(STYLE_ID)) injectCosmeticCSS();
+      // Only re-inject if cosmetic filtering is currently active.
+      // Without this guard, removing the style when disabled causes the observer
+      // to immediately re-inject it on the next DOM mutation.
+      if (_cosmeticActive && !document.getElementById(STYLE_ID)) injectCosmeticCSS();
     });
     const attach = () => obs.observe(document.documentElement, { childList: true, subtree: true });
     if (document.readyState === 'loading') {
@@ -89,10 +94,12 @@
   // Inject CSS immediately (zero delay) — removes async gap where ads flash through.
   // If user has disabled the extension we'll remove it once storage responds.
   injectCosmeticCSS();
+  _cosmeticActive = true;
   startObserver();
 
   chrome.storage.local.get(['adblock_enabled', 'custom_selectors'], ({ adblock_enabled, custom_selectors }) => {
     if (adblock_enabled === false) {
+      _cosmeticActive = false;
       removeCosmeticCSS();
       return;
     }
@@ -105,9 +112,11 @@
     if (area !== 'local') return;
     if ('adblock_enabled' in changes) {
       if (changes.adblock_enabled.newValue === false) {
+        _cosmeticActive = false;
         removeCosmeticCSS();
         applyCustomSelectors([]);
       } else {
+        _cosmeticActive = true;
         injectCosmeticCSS();
         chrome.storage.local.get('custom_selectors', ({ custom_selectors }) => {
           applyCustomSelectors(custom_selectors || []);

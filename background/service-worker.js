@@ -114,6 +114,7 @@ async function loadState() {
   // Restore DNR rules after browser restart
   await syncWhitelistRules(data[WHITELIST_KEY] || []);
   await syncCustomBlockedRules(data[CUSTOM_BLOCKED_KEY] || []);
+  if (data[ADULT_FILTER_KEY] === true) await syncAdultFilterRules();
 
   // Restore filter list rules if they were lost (browser update / storage wipe)
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
@@ -433,14 +434,26 @@ async function setGlobalEnabled(enabled) {
   updateBadgeState(enabled);
   refreshBadgesForAllTabs();
   try {
-    if (enabled) {
-      await chrome.declarativeNetRequest.updateEnabledRulesets({
-        enableRulesetIds: ['adblock_main'], disableRulesetIds: []
-      });
-    } else {
-      await chrome.declarativeNetRequest.updateEnabledRulesets({
-        enableRulesetIds: [], disableRulesetIds: ['adblock_main']
-      });
+    // Toggle static ruleset
+    await chrome.declarativeNetRequest.updateEnabledRulesets(
+      enabled
+        ? { enableRulesetIds: ['adblock_main'], disableRulesetIds: [] }
+        : { enableRulesetIds: [], disableRulesetIds: ['adblock_main'] }
+    );
+    // Also disable/enable dynamic filter-list rules (10000-range) so the
+    // extension truly stops blocking when toggled off.
+    const all = await chrome.declarativeNetRequest.getDynamicRules();
+    const filterIds = all.filter(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES).map(r => r.id);
+    if (!enabled && filterIds.length) {
+      // Stash IDs so we can restore them
+      await chrome.storage.local.set({ _disabledFilterIds: filterIds });
+      await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: filterIds });
+    } else if (enabled) {
+      const stash = await chrome.storage.local.get('_disabledFilterIds');
+      if (stash._disabledFilterIds?.length) {
+        chrome.storage.local.remove('_disabledFilterIds');
+        fetchAndUpdateFilters().catch(() => {});
+      }
     }
   } catch {}
 }
@@ -518,7 +531,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       Object.keys(_typeStats).forEach(k => _typeStats[k] = 0);
       if (_flushTimer) { clearTimeout(_flushTimer); _flushTimer = null; }
       chrome.storage.local.set({
-        [STATS_KEY]: { total: 0, today: 0, lastReset: new Date().toDateString() }
+        [STATS_KEY]:   { total: 0, today: 0, lastReset: new Date().toDateString() },
+        [HISTORY_KEY]: {}
       }).then(() => {
         refreshBadgesForAllTabs();
         sendResponse({ ok: true });
