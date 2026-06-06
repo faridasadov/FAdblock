@@ -45,12 +45,22 @@ const DEFAULT_CATEGORY_SETTINGS = {
 
 // Fallback list used until the full list is fetched
 const ADULT_DOMAINS_FALLBACK = [
+  // Global
   'pornhub.com','xvideos.com','xnxx.com','xhamster.com','redtube.com',
   'youporn.com','tube8.com','spankbang.com','eporner.com','beeg.com',
   'hclips.com','drtuber.com','tnaflix.com','porn.com','sex.com',
   'brazzers.com','realitykings.com','naughtyamerica.com','bangbros.com',
   'mofos.com','teamskeet.com','nutaku.net','nhentai.net','rule34.xxx',
-  'porno.ru','sex.ru','pornuha.ru','slutload.com','fuq.com','txxx.com',
+  'slutload.com','fuq.com','txxx.com','4tube.com','empflix.com',
+  'porntrex.com','vporn.com','porndig.com','hdtube.porn','fullporn.tv',
+  // Russian / CIS
+  'porno.ru','sex.ru','pornuha.ru','porno365.com','pornoro.ru',
+  'russkoe-porno.ru','hd-porn.ru','megaporno.ru','porno-video.ru',
+  'xxxhd.ru','pornotub.ru','sexvideo.ru','erotika.ru','pornhd.ru',
+  'trah.tv','pornomam.com','0porn.ru','xxxcis.com','pornlab.ru',
+  'sexpics.ru','pornolab.net','trachtube.com','russkieporno.ru',
+  'porno365.ru','sexfilmi.ru','porno-go.ru','pussyspace.com',
+  'pussyspace.net','trahnuli.com','nashe-porno.ru','seks-video.ru',
 ];
 
 function t(key, substitutions) {
