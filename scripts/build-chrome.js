@@ -25,6 +25,18 @@ if (manifest.background) {
 }
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 
+// Replace "Firefox" with "Chrome" in all locale description fields
+const localesDir = path.join(stageDir, '_locales');
+for (const lang of fs.readdirSync(localesDir)) {
+  const msgPath = path.join(localesDir, lang, 'messages.json');
+  if (!fs.existsSync(msgPath)) continue;
+  const msgs = JSON.parse(fs.readFileSync(msgPath, 'utf8'));
+  if (msgs.extDescription?.message) {
+    msgs.extDescription.message = msgs.extDescription.message.replace(/Firefox/g, 'Chrome');
+  }
+  fs.writeFileSync(msgPath, JSON.stringify(msgs, null, 2) + '\n');
+}
+
 fs.mkdirSync(distDir, { recursive: true });
 const zipPath = path.join(distDir, 'fadblock-chrome.zip');
 try { fs.unlinkSync(zipPath); } catch {}
