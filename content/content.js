@@ -86,12 +86,17 @@
     return document.querySelector('#movie_player video, .html5-video-player video');
   }
 
-  // Check global enabled state before doing anything
+  // Inject CSS immediately (zero delay) — removes async gap where ads flash through.
+  // If user has disabled the extension we'll remove it once storage responds.
+  injectCosmeticCSS();
+  startObserver();
+
   chrome.storage.local.get(['adblock_enabled', 'custom_selectors'], ({ adblock_enabled, custom_selectors }) => {
-    if (adblock_enabled === false) return;
-    injectCosmeticCSS();
+    if (adblock_enabled === false) {
+      removeCosmeticCSS();
+      return;
+    }
     applyCustomSelectors(custom_selectors || []);
-    startObserver();
     if (isYouTubeWatchPage()) setupYouTubeAdBypass();
   });
 
@@ -166,7 +171,7 @@
 
     function clearYouTubeEnforcement() {
       const now = Date.now();
-      if (now - state.lastRun < 400) return;
+      if (now - state.lastRun < 100) return;
       state.lastRun = now;
       injectYouTubeCSS();
 
@@ -223,7 +228,7 @@
       state.timer = setInterval(() => {
         if (!isYouTubeWatchPage()) return;
         const skipBtn = document.querySelector(
-          '.ytp-skip-ad-button, .ytp-ad-skip-button-container button'
+          '.ytp-skip-ad-button, .ytp-ad-skip-button-container button, .ytp-skip-ad-button-container button'
         );
         if (skipBtn) { skipBtn.click(); return; }
         const video = getYouTubeMainVideo();
@@ -232,7 +237,7 @@
           if (!video.muted) video.muted = true;
           if (video.playbackRate < 16) video.playbackRate = 16;
         }
-      }, 1000);
+      }, 300);
     }
 
     startTick();

@@ -115,6 +115,11 @@ async function loadState() {
   await syncWhitelistRules(data[WHITELIST_KEY] || []);
   await syncCustomBlockedRules(data[CUSTOM_BLOCKED_KEY] || []);
 
+  // Restore filter list rules if they were lost (browser update / storage wipe)
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const hasFilterRules = existing.some(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES);
+  if (!hasFilterRules) fetchAndUpdateFilters().catch(() => {});
+
   // Pull preferences from sync storage
   try {
     const sync = await chrome.storage.sync.get([NOTIF_ENABLED_KEY, BADGE_COLOR_KEY, ADULT_FILTER_KEY]);
