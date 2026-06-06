@@ -16,22 +16,22 @@ const ADULT_FILTER_KEY   = 'adult_filter_enabled';
 const FILTER_RULE_BASE   = 10000;
 const MAX_FILTER_RULES   = 4000;
 const ADULT_RULE_BASE    = 50000;
-const MAX_ADULT_RULES    = 200;
+const ADULT_BATCH_SIZE   = 500;   // domains per DNR rule (requestDomains batch)
+const MAX_ADULT_BATCHES  = 8;     // 8 rules × 500 = 4000 domains max
+const ADULT_META_KEY     = 'adult_filter_meta';
+const ADULT_DOMAINS_KEY  = 'adult_filter_domains';
 const MILESTONES = [100, 500, 1000, 5000, 10000, 50000, 100000];
 
 const BADGE_COLORS = { red: '#e74c3c', blue: '#3498db', green: '#27ae60', purple: '#9b59b6' };
 
-const ADULT_DOMAINS = [
+// Fallback list used until the full list is fetched
+const ADULT_DOMAINS_FALLBACK = [
   'pornhub.com','xvideos.com','xnxx.com','xhamster.com','redtube.com',
   'youporn.com','tube8.com','spankbang.com','eporner.com','beeg.com',
   'hclips.com','drtuber.com','tnaflix.com','porn.com','sex.com',
   'brazzers.com','realitykings.com','naughtyamerica.com','bangbros.com',
-  'mofos.com','teamskeet.com','nutaku.net','gelbooru.com','e621.net',
-  'rule34.xxx','danbooru.donmai.us','furaffinity.net','nhentai.net',
-  'porno.ru','sex.ru','pornuha.ru','porno365.video',
-  'pornofoto.ru','erofond.com','18plus.com','adult.com',
-  'slutload.com','hellporno.com','fuq.com','txxx.com',
-  'keezmovies.com','gotporn.com','ashemaletube.com',
+  'mofos.com','teamskeet.com','nutaku.net','nhentai.net','rule34.xxx',
+  'porno.ru','sex.ru','pornuha.ru','slutload.com','fuq.com','txxx.com',
 ];
 
 function t(key, substitutions) {
@@ -152,6 +152,9 @@ chrome.runtime.onInstalled.addListener(async () => {
   chrome.alarms.get('updateFilters', existing => {
     if (!existing) chrome.alarms.create('updateFilters', { periodInMinutes: 10080 });
   });
+  chrome.alarms.get('updateAdultFilter', existing => {
+    if (!existing) chrome.alarms.create('updateAdultFilter', { periodInMinutes: 10080 });
+  });
   chrome.storage.local.get(FILTERS_META_KEY, d => {
     if (!d[FILTERS_META_KEY]) fetchAndUpdateFilters();
   });
@@ -180,7 +183,8 @@ chrome.commands.onCommand.addListener(async (command) => {
 });
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === 'updateFilters')  fetchAndUpdateFilters();
+  if (alarm.name === 'updateFilters')      fetchAndUpdateFilters();
+  if (alarm.name === 'updateAdultFilter')  fetchAndUpdateAdultRules();
   if (alarm.name === 'resumeAdblock') {
     _pauseUntil = 0;
     chrome.storage.local.remove(PAUSE_KEY);
@@ -412,18 +416,63 @@ async function syncCustomBlockedRules(list) {
   });
 }
 
+async function fetchAndUpdateAdultRules() {
+  try {
+    const res = await fetch(
+      'https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts',
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return;
+    const text = await res.text();
+
+    const seen = new Set();
+    const domains = [];
+    for (const line of text.split('\n')) {
+      if (line.startsWith('#') || !line.trim()) continue;
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 2) continue;
+      let domain = parts[1].toLowerCase();
+      if (!domain.includes('.') || domain === '0.0.0.0') continue;
+      if (domain.startsWith('www.')) domain = domain.slice(4);
+      if (!seen.has(domain)) {
+        seen.add(domain);
+        domains.push(domain);
+        if (domains.length >= ADULT_BATCH_SIZE * MAX_ADULT_BATCHES) break;
+      }
+    }
+
+    await chrome.storage.local.set({
+      [ADULT_DOMAINS_KEY]: domains,
+      [ADULT_META_KEY]: { updated: new Date().toISOString(), count: domains.length }
+    });
+    if (_adultFilterEnabled) await syncAdultFilterRules();
+  } catch {}
+}
+
 async function syncAdultFilterRules() {
   const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
-  const oldIds   = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_RULES).map(r => r.id);
-  const addRules = _adultFilterEnabled
-    ? ADULT_DOMAINS.slice(0, MAX_ADULT_RULES).map((domain, i) => ({
-        id: ADULT_RULE_BASE + i,
-        priority: 998,
-        action: { type: 'block' },
-        condition: { urlFilter: `||${domain}^`, resourceTypes: allTypes }
-      }))
-    : [];
+  const oldIds   = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_BATCHES).map(r => r.id);
+
+  if (!_adultFilterEnabled) {
+    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules: [] });
+    return;
+  }
+
+  const data = await chrome.storage.local.get(ADULT_DOMAINS_KEY);
+  const list = data[ADULT_DOMAINS_KEY]?.length ? data[ADULT_DOMAINS_KEY] : ADULT_DOMAINS_FALLBACK;
+
+  // Batch domains into groups — one DNR rule per batch using requestDomains
+  const addRules = [];
+  for (let i = 0; i < list.length && i < ADULT_BATCH_SIZE * MAX_ADULT_BATCHES; i += ADULT_BATCH_SIZE) {
+    addRules.push({
+      id: ADULT_RULE_BASE + Math.floor(i / ADULT_BATCH_SIZE),
+      priority: 998,
+      action: { type: 'block' },
+      condition: { requestDomains: list.slice(i, i + ADULT_BATCH_SIZE), resourceTypes: allTypes }
+    });
+  }
+
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules });
 }
 
@@ -664,11 +713,26 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       _adultFilterEnabled = !!msg.enabled;
       chrome.storage.local.set({ [ADULT_FILTER_KEY]: _adultFilterEnabled });
       chrome.storage.sync.set({ [ADULT_FILTER_KEY]: _adultFilterEnabled }).catch(() => {});
+      if (_adultFilterEnabled) {
+        // Fetch full list if not yet downloaded
+        chrome.storage.local.get(ADULT_META_KEY, d => {
+          if (!d[ADULT_META_KEY]) fetchAndUpdateAdultRules().catch(() => {});
+        });
+      }
       syncAdultFilterRules().then(() => sendResponse({ ok: true }));
       return true;
 
     case 'GET_ADULT_FILTER':
       sendResponse({ enabled: _adultFilterEnabled });
+      return true;
+
+    case 'GET_ADULT_META':
+      chrome.storage.local.get(ADULT_META_KEY)
+        .then(d => sendResponse({ meta: d[ADULT_META_KEY] || null }));
+      return true;
+
+    case 'UPDATE_ADULT_FILTER':
+      fetchAndUpdateAdultRules().then(() => sendResponse({ ok: true }));
       return true;
   }
 });

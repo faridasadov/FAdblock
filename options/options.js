@@ -306,6 +306,27 @@ async function init() {
     chrome.runtime.sendMessage({ type: 'SET_ADULT_FILTER', enabled: e.target.checked });
   });
 
+  // Adult filter meta
+  async function loadAdultMeta() {
+    const { meta } = await chrome.runtime.sendMessage({ type: 'GET_ADULT_META' });
+    const el = $('adultFilterMeta');
+    if (meta) {
+      el.textContent = t('optionsFiltersMeta', [new Date(meta.updated).toLocaleString(), formatNumber(meta.count)]);
+    } else {
+      el.textContent = t('optionsFiltersEmpty');
+    }
+  }
+  loadAdultMeta();
+
+  $('updateAdultFilter').addEventListener('click', async () => {
+    $('updateAdultFilter').textContent = t('optionsFiltersUpdating');
+    $('updateAdultFilter').disabled = true;
+    await chrome.runtime.sendMessage({ type: 'UPDATE_ADULT_FILTER' });
+    await loadAdultMeta();
+    $('updateAdultFilter').textContent = t('optionsFiltersUpdate');
+    $('updateAdultFilter').disabled = false;
+  });
+
   // YouTube filter (stored locally, read by youtube-filter.js content script)
   $('ytFilterToggle').checked = ytData.youtube_filter_enabled === true;
   $('ytFilterToggle').addEventListener('change', e => {
