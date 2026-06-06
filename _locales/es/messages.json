@@ -3,7 +3,7 @@
     "message": "FAdblock"
   },
   "extDescription": {
-    "message": "Bloqueador de anuncios rápido y ligero para Firefox y Chrome"
+    "message": "Fast and lightweight ad blocker for Firefox. Skips YouTube ads, blocks trackers and adult content."
   },
   "toggleAdblockCommand": {
     "message": "Activar o desactivar FAdblock"
@@ -184,7 +184,7 @@
     "message": "Acerca de"
   },
   "optionsAboutText": {
-    "message": "FAdblock es un bloqueador de anuncios de código abierto para Chrome y Firefox. Manifest V3 · declarativeNetRequest · Filtros cosméticos · Saltar anuncios de YouTube"
+    "message": "FAdblock is an open-source ad blocker for Firefox. Manifest V3 · declarativeNetRequest · Cosmetic filters · YouTube ad-skip · 18+ filter"
   },
   "optionsAuthorLabel": {
     "message": "Autor"

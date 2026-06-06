@@ -1,120 +1,326 @@
 {
-  "extName": { "message": "FAdblock" },
-  "extDescription": { "message": "Firefox və Chrome üçün sürətli və yüngül reklam bloker" },
-  "toggleAdblockCommand": { "message": "FAdblock aç/bağla" },
-  "actionTitleActive": { "message": "FAdblock - Aktiv" },
-  "actionTitleDisabled": { "message": "FAdblock - Söndürülüb" },
-  "contextMenuPick": { "message": "FAdblock: Bu elementi blokla" },
-  "contextMenuDomain": { "message": "FAdblock: Bu domeini blokla" },
-  "milestoneTitle": { "message": "FAdblock" },
+  "extName": {
+    "message": "FAdblock"
+  },
+  "extDescription": {
+    "message": "Fast and lightweight ad blocker for Firefox. Skips YouTube ads, blocks trackers and adult content."
+  },
+  "toggleAdblockCommand": {
+    "message": "FAdblock aç/bağla"
+  },
+  "actionTitleActive": {
+    "message": "FAdblock - Aktiv"
+  },
+  "actionTitleDisabled": {
+    "message": "FAdblock - Söndürülüb"
+  },
+  "contextMenuPick": {
+    "message": "FAdblock: Bu elementi blokla"
+  },
+  "contextMenuDomain": {
+    "message": "FAdblock: Bu domeini blokla"
+  },
+  "milestoneTitle": {
+    "message": "FAdblock"
+  },
   "milestoneMessage": {
     "message": "$COUNT$ reklam bloklandı!",
-    "placeholders": { "count": { "content": "$1" } }
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
-  "popupGlobalToggleLabel": { "message": "Bütün bloklamanı aç/bağla" },
-  "popupSiteToggleLabel": { "message": "Bu sayt üçün aç/bağla" },
-  "popupStatTab": { "message": "Bu səhifədə" },
-  "popupStatToday": { "message": "Bu gün" },
-  "popupStatTotal": { "message": "Cəmi" },
-  "popupPickButton": { "message": "⊙ Element seç" },
-  "popupOpenOptions": { "message": "Parametrlər" },
-  "popupDonate": { "message": "♥ Dəstəklə" },
-  "popupSystemPage": { "message": "Sistem səhifəsi" },
-  "optionsPageTitle": { "message": "FAdblock - Parametrlər" },
-  "optionsSubtitle": { "message": "Parametrlər" },
-  "optionsStatsTitle": { "message": "Statistika" },
-  "optionsTotalBlocked": { "message": "Cəmi bloklandı" },
-  "optionsToday": { "message": "Bu gün" },
-  "optionsResetStats": { "message": "Statistikanı sıfırla" },
-  "optionsChartAria": { "message": "7 günlük blok qrafiki" },
-  "optionsWhitelistTitle": { "message": "İcazə verilən saytlar" },
-  "optionsWhitelistHint": { "message": "Bu saytlarda bloklama işləmir." },
-  "optionsDomainInputAria": { "message": "Sayt domen adı" },
-  "commonAdd": { "message": "Əlavə et" },
-  "optionsWhitelistAria": { "message": "İcazə verilən saytlar siyahısı" },
-  "commonEmptyList": { "message": "Siyahı boşdur" },
-  "optionsSiteStatsTitle": { "message": "Sayt üzrə statistika" },
-  "optionsSiteStatsHint": { "message": "Ən çox reklam bloklanan saytlar (top 10)." },
-  "optionsSiteStatsEmpty": { "message": "Hələ məlumat yoxdur" },
-  "optionsClearSiteStats": { "message": "Sayt statistikasını sıfırla" },
-  "optionsSelectorsTitle": { "message": "Xüsusi CSS filtrlər" },
-  "optionsSelectorsHint": { "message": "Öz CSS selectorlarınızı əlavə edin. Həmin elementlər bütün səhifələrdə gizlədilir." },
-  "optionsSelectorInputAria": { "message": "CSS selector" },
-  "optionsSelectorListAria": { "message": "Xüsusi CSS selectorlar" },
-  "optionsBlockedTitle": { "message": "Bloklanmış domenlər" },
-  "optionsBlockedHint": { "message": "Kontekst menyusundan və ya manual əlavə edilmiş blok siyahısı." },
-  "optionsBlockInputAria": { "message": "Bloklanacaq domen" },
-  "optionsBlockedListAria": { "message": "Bloklanmış domenlər" },
-  "optionsFiltersTitle": { "message": "Filter siyahısı" },
-  "optionsFiltersLoading": { "message": "Yüklənir..." },
-  "optionsFiltersUpdate": { "message": "İndi yenilə" },
-  "optionsFiltersUpdating": { "message": "Yenilənir..." },
+  "popupGlobalToggleLabel": {
+    "message": "Bütün bloklamanı aç/bağla"
+  },
+  "popupSiteToggleLabel": {
+    "message": "Bu sayt üçün aç/bağla"
+  },
+  "popupStatTab": {
+    "message": "Bu səhifədə"
+  },
+  "popupStatToday": {
+    "message": "Bu gün"
+  },
+  "popupStatTotal": {
+    "message": "Cəmi"
+  },
+  "popupPickButton": {
+    "message": "⊙ Element seç"
+  },
+  "popupOpenOptions": {
+    "message": "Parametrlər"
+  },
+  "popupDonate": {
+    "message": "♥ Dəstəklə"
+  },
+  "popupSystemPage": {
+    "message": "Sistem səhifəsi"
+  },
+  "optionsPageTitle": {
+    "message": "FAdblock - Parametrlər"
+  },
+  "optionsSubtitle": {
+    "message": "Parametrlər"
+  },
+  "optionsStatsTitle": {
+    "message": "Statistika"
+  },
+  "optionsTotalBlocked": {
+    "message": "Cəmi bloklandı"
+  },
+  "optionsToday": {
+    "message": "Bu gün"
+  },
+  "optionsResetStats": {
+    "message": "Statistikanı sıfırla"
+  },
+  "optionsChartAria": {
+    "message": "7 günlük blok qrafiki"
+  },
+  "optionsWhitelistTitle": {
+    "message": "İcazə verilən saytlar"
+  },
+  "optionsWhitelistHint": {
+    "message": "Bu saytlarda bloklama işləmir."
+  },
+  "optionsDomainInputAria": {
+    "message": "Sayt domen adı"
+  },
+  "commonAdd": {
+    "message": "Əlavə et"
+  },
+  "optionsWhitelistAria": {
+    "message": "İcazə verilən saytlar siyahısı"
+  },
+  "commonEmptyList": {
+    "message": "Siyahı boşdur"
+  },
+  "optionsSiteStatsTitle": {
+    "message": "Sayt üzrə statistika"
+  },
+  "optionsSiteStatsHint": {
+    "message": "Ən çox reklam bloklanan saytlar (top 10)."
+  },
+  "optionsSiteStatsEmpty": {
+    "message": "Hələ məlumat yoxdur"
+  },
+  "optionsClearSiteStats": {
+    "message": "Sayt statistikasını sıfırla"
+  },
+  "optionsSelectorsTitle": {
+    "message": "Xüsusi CSS filtrlər"
+  },
+  "optionsSelectorsHint": {
+    "message": "Öz CSS selectorlarınızı əlavə edin. Həmin elementlər bütün səhifələrdə gizlədilir."
+  },
+  "optionsSelectorInputAria": {
+    "message": "CSS selector"
+  },
+  "optionsSelectorListAria": {
+    "message": "Xüsusi CSS selectorlar"
+  },
+  "optionsBlockedTitle": {
+    "message": "Bloklanmış domenlər"
+  },
+  "optionsBlockedHint": {
+    "message": "Kontekst menyusundan və ya manual əlavə edilmiş blok siyahısı."
+  },
+  "optionsBlockInputAria": {
+    "message": "Bloklanacaq domen"
+  },
+  "optionsBlockedListAria": {
+    "message": "Bloklanmış domenlər"
+  },
+  "optionsFiltersTitle": {
+    "message": "Filter siyahısı"
+  },
+  "optionsFiltersLoading": {
+    "message": "Yüklənir..."
+  },
+  "optionsFiltersUpdate": {
+    "message": "İndi yenilə"
+  },
+  "optionsFiltersUpdating": {
+    "message": "Yenilənir..."
+  },
   "optionsFiltersMeta": {
     "message": "Son yeniləmə: $DATE$ · $COUNT$ domen",
     "placeholders": {
-      "date": { "content": "$1" },
-      "count": { "content": "$2" }
+      "date": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$2"
+      }
     }
   },
-  "optionsFiltersEmpty": { "message": "Hələ yüklənməyib - \"İndi yenilə\" düyməsinə basın." },
-  "optionsImportExportTitle": { "message": "Parametrləri ixrac / idxal et" },
-  "optionsImportExportHint": { "message": "Whitelist, xüsusi CSS filtrlər və bloklanmış domenləri JSON faylı kimi saxla və ya bərpa et." },
-  "optionsExport": { "message": "⬇ İxrac et" },
-  "optionsImport": { "message": "⬆ İdxal et" },
-  "optionsDonateTitle": { "message": "♥ Layihəni dəstəklə" },
-  "optionsDonateText": { "message": "FAdblock pulsuzdur və həmişə pulsuz qalacaq. Bəyəndinsə, bir qəhvə al!" },
-  "optionsDonatePaypal": { "message": "PayPal ilə dəstəklə" },
-  "optionsAboutTitle": { "message": "Haqqında" },
-  "optionsAboutText": { "message": "FAdblock Chrome və Firefox üçün açıq mənbəli reklam blokeridir. Manifest V3 · declarativeNetRequest · Kosmetik filtrlər · YouTube ad-skip" },
-  "optionsAuthorLabel": { "message": "Müəllif" },
+  "optionsFiltersEmpty": {
+    "message": "Hələ yüklənməyib - \"İndi yenilə\" düyməsinə basın."
+  },
+  "optionsImportExportTitle": {
+    "message": "Parametrləri ixrac / idxal et"
+  },
+  "optionsImportExportHint": {
+    "message": "Whitelist, xüsusi CSS filtrlər və bloklanmış domenləri JSON faylı kimi saxla və ya bərpa et."
+  },
+  "optionsExport": {
+    "message": "⬇ İxrac et"
+  },
+  "optionsImport": {
+    "message": "⬆ İdxal et"
+  },
+  "optionsDonateTitle": {
+    "message": "♥ Layihəni dəstəklə"
+  },
+  "optionsDonateText": {
+    "message": "FAdblock pulsuzdur və həmişə pulsuz qalacaq. Bəyəndinsə, bir qəhvə al!"
+  },
+  "optionsDonatePaypal": {
+    "message": "PayPal ilə dəstəklə"
+  },
+  "optionsAboutTitle": {
+    "message": "Haqqında"
+  },
+  "optionsAboutText": {
+    "message": "FAdblock is an open-source ad blocker for Firefox. Manifest V3 · declarativeNetRequest · Cosmetic filters · YouTube ad-skip · 18+ filter"
+  },
+  "optionsAuthorLabel": {
+    "message": "Müəllif"
+  },
   "removeDomainAria": {
     "message": "$DOMAIN$ silinsin",
-    "placeholders": { "domain": { "content": "$1" } }
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
   "removeSelectorAria": {
     "message": "$SELECTOR$ silinsin",
-    "placeholders": { "selector": { "content": "$1" } }
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
   },
   "removeBlockedAria": {
     "message": "$DOMAIN$ silinsin",
-    "placeholders": { "domain": { "content": "$1" } }
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
-  "importError": { "message": "Fayl oxunmadı - düzgün FAdblock JSON faylı seçin." },
-  "pickerBarText": { "message": "FAdblock: gizlətmək istədiyiniz elementi seçin - ESC ilə çıxın" },
+  "importError": {
+    "message": "Fayl oxunmadı - düzgün FAdblock JSON faylı seçin."
+  },
+  "pickerBarText": {
+    "message": "FAdblock: gizlətmək istədiyiniz elementi seçin - ESC ilə çıxın"
+  },
   "pickerConfirm": {
     "message": "FAdblock: bu elementi gizlət?\n\n$SELECTOR$",
-    "placeholders": { "selector": { "content": "$1" } }
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
   },
-  "chartDay0": { "message": "B" },
-  "chartDay1": { "message": "B.e" },
-  "chartDay2": { "message": "Ç.a" },
-  "chartDay3": { "message": "Ç" },
-  "chartDay4": { "message": "C.a" },
-  "chartDay5": { "message": "C" },
-  "chartDay6": { "message": "Ş" },
-  "popup15m": { "message": "15d" },
-  "popup30m": { "message": "30d" },
-  "popup1h":  { "message": "1s" },
-  "popupResume":    { "message": "↺ Bərpa et" },
-  "popupSitePause": { "message": "Sayt pauza:" },
-  "optionsTypeStatsTitle": { "message": "Blok növü statistikası" },
-  "optionsTypeStatsHint":  { "message": "Hansı növ sorğuların bloklandığı." },
-  "typeScript": { "message": "Script" },
-  "typeImage":  { "message": "Şəkil" },
-  "typeXhr":    { "message": "XHR/Fetch" },
-  "typeMedia":  { "message": "Media" },
-  "typeFrame":  { "message": "Frame" },
-  "typeOther":  { "message": "Digər" },
-  "optionsPrefsTitle":      { "message": "Tənzimləmələr" },
-  "optionsNotifLabel":      { "message": "Bildirişlər" },
-  "optionsNotifHint":       { "message": "Mərhələ bildirişlərini göstər" },
-  "optionsBadgeColorLabel": { "message": "Badge rəngi" },
-  "optionsAdultTitle":      { "message": "🔞 Yetkinlər üçün məzmun filtri" },
-  "optionsAdultHint":       { "message": "Tanınan 18+ saytları blokla. YouTube açar söz filtrasiyası avtomatik işləyir." },
-  "optionsAdultBlockLabel": { "message": "18+ sayt bloklama" },
-  "optionsAdultBlockHint":  { "message": "Tanınan yetkin məzmun saytlarını blokla" },
-  "optionsYtFilterLabel":   { "message": "YouTube filtrasiyası" },
-  "optionsYtFilterHint":    { "message": "YouTube-da 18+ açar söz daşıyan videoları gizlət" },
-  "pickerUndoText": { "message": "Element gizlədildi" },
-  "pickerUndo":     { "message": "Geri al" }
+  "chartDay0": {
+    "message": "B"
+  },
+  "chartDay1": {
+    "message": "B.e"
+  },
+  "chartDay2": {
+    "message": "Ç.a"
+  },
+  "chartDay3": {
+    "message": "Ç"
+  },
+  "chartDay4": {
+    "message": "C.a"
+  },
+  "chartDay5": {
+    "message": "C"
+  },
+  "chartDay6": {
+    "message": "Ş"
+  },
+  "popup15m": {
+    "message": "15d"
+  },
+  "popup30m": {
+    "message": "30d"
+  },
+  "popup1h": {
+    "message": "1s"
+  },
+  "popupResume": {
+    "message": "↺ Bərpa et"
+  },
+  "popupSitePause": {
+    "message": "Sayt pauza:"
+  },
+  "optionsTypeStatsTitle": {
+    "message": "Blok növü statistikası"
+  },
+  "optionsTypeStatsHint": {
+    "message": "Hansı növ sorğuların bloklandığı."
+  },
+  "typeScript": {
+    "message": "Script"
+  },
+  "typeImage": {
+    "message": "Şəkil"
+  },
+  "typeXhr": {
+    "message": "XHR/Fetch"
+  },
+  "typeMedia": {
+    "message": "Media"
+  },
+  "typeFrame": {
+    "message": "Frame"
+  },
+  "typeOther": {
+    "message": "Digər"
+  },
+  "optionsPrefsTitle": {
+    "message": "Tənzimləmələr"
+  },
+  "optionsNotifLabel": {
+    "message": "Bildirişlər"
+  },
+  "optionsNotifHint": {
+    "message": "Mərhələ bildirişlərini göstər"
+  },
+  "optionsBadgeColorLabel": {
+    "message": "Badge rəngi"
+  },
+  "optionsAdultTitle": {
+    "message": "🔞 Yetkinlər üçün məzmun filtri"
+  },
+  "optionsAdultHint": {
+    "message": "Tanınan 18+ saytları blokla. YouTube açar söz filtrasiyası avtomatik işləyir."
+  },
+  "optionsAdultBlockLabel": {
+    "message": "18+ sayt bloklama"
+  },
+  "optionsAdultBlockHint": {
+    "message": "Tanınan yetkin məzmun saytlarını blokla"
+  },
+  "optionsYtFilterLabel": {
+    "message": "YouTube filtrasiyası"
+  },
+  "optionsYtFilterHint": {
+    "message": "YouTube-da 18+ açar söz daşıyan videoları gizlət"
+  },
+  "pickerUndoText": {
+    "message": "Element gizlədildi"
+  },
+  "pickerUndo": {
+    "message": "Geri al"
+  }
 }

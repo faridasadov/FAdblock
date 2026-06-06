@@ -1,120 +1,326 @@
 {
-  "extName": { "message": "FAdblock" },
-  "extDescription": { "message": "Быстрый и легкий блокировщик рекламы для Firefox и Chrome" },
-  "toggleAdblockCommand": { "message": "Включить или выключить FAdblock" },
-  "actionTitleActive": { "message": "FAdblock - Включен" },
-  "actionTitleDisabled": { "message": "FAdblock - Выключен" },
-  "contextMenuPick": { "message": "FAdblock: Заблокировать этот элемент" },
-  "contextMenuDomain": { "message": "FAdblock: Заблокировать этот домен" },
-  "milestoneTitle": { "message": "FAdblock" },
+  "extName": {
+    "message": "FAdblock"
+  },
+  "extDescription": {
+    "message": "Fast and lightweight ad blocker for Firefox. Skips YouTube ads, blocks trackers and adult content."
+  },
+  "toggleAdblockCommand": {
+    "message": "Включить или выключить FAdblock"
+  },
+  "actionTitleActive": {
+    "message": "FAdblock - Включен"
+  },
+  "actionTitleDisabled": {
+    "message": "FAdblock - Выключен"
+  },
+  "contextMenuPick": {
+    "message": "FAdblock: Заблокировать этот элемент"
+  },
+  "contextMenuDomain": {
+    "message": "FAdblock: Заблокировать этот домен"
+  },
+  "milestoneTitle": {
+    "message": "FAdblock"
+  },
   "milestoneMessage": {
     "message": "Заблокировано $COUNT$ объявлений!",
-    "placeholders": { "count": { "content": "$1" } }
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
-  "popupGlobalToggleLabel": { "message": "Включить или выключить всю блокировку" },
-  "popupSiteToggleLabel": { "message": "Включить или выключить для этого сайта" },
-  "popupStatTab": { "message": "Эта страница" },
-  "popupStatToday": { "message": "Сегодня" },
-  "popupStatTotal": { "message": "Всего" },
-  "popupPickButton": { "message": "⊙ Выбрать элемент" },
-  "popupOpenOptions": { "message": "Настройки" },
-  "popupDonate": { "message": "♥ Поддержать" },
-  "popupSystemPage": { "message": "Системная страница" },
-  "optionsPageTitle": { "message": "FAdblock - Настройки" },
-  "optionsSubtitle": { "message": "Настройки" },
-  "optionsStatsTitle": { "message": "Статистика" },
-  "optionsTotalBlocked": { "message": "Заблокировано всего" },
-  "optionsToday": { "message": "Сегодня" },
-  "optionsResetStats": { "message": "Сбросить статистику" },
-  "optionsChartAria": { "message": "График блокировок за 7 дней" },
-  "optionsWhitelistTitle": { "message": "Разрешенные сайты" },
-  "optionsWhitelistHint": { "message": "На этих сайтах блокировка отключена." },
-  "optionsDomainInputAria": { "message": "Домен сайта" },
-  "commonAdd": { "message": "Добавить" },
-  "optionsWhitelistAria": { "message": "Список разрешенных сайтов" },
-  "commonEmptyList": { "message": "Список пуст" },
-  "optionsSiteStatsTitle": { "message": "Статистика по сайтам" },
-  "optionsSiteStatsHint": { "message": "Сайты с наибольшим числом заблокированной рекламы (топ 10)." },
-  "optionsSiteStatsEmpty": { "message": "Пока нет данных" },
-  "optionsClearSiteStats": { "message": "Сбросить статистику сайтов" },
-  "optionsSelectorsTitle": { "message": "Пользовательские CSS-фильтры" },
-  "optionsSelectorsHint": { "message": "Добавьте собственные CSS-селекторы. Подходящие элементы будут скрываться на всех страницах." },
-  "optionsSelectorInputAria": { "message": "CSS-селектор" },
-  "optionsSelectorListAria": { "message": "Пользовательские CSS-селекторы" },
-  "optionsBlockedTitle": { "message": "Заблокированные домены" },
-  "optionsBlockedHint": { "message": "Список блокировок, добавленных вручную или через контекстное меню." },
-  "optionsBlockInputAria": { "message": "Домен для блокировки" },
-  "optionsBlockedListAria": { "message": "Заблокированные домены" },
-  "optionsFiltersTitle": { "message": "Список фильтров" },
-  "optionsFiltersLoading": { "message": "Загрузка..." },
-  "optionsFiltersUpdate": { "message": "Обновить сейчас" },
-  "optionsFiltersUpdating": { "message": "Обновление..." },
+  "popupGlobalToggleLabel": {
+    "message": "Включить или выключить всю блокировку"
+  },
+  "popupSiteToggleLabel": {
+    "message": "Включить или выключить для этого сайта"
+  },
+  "popupStatTab": {
+    "message": "Эта страница"
+  },
+  "popupStatToday": {
+    "message": "Сегодня"
+  },
+  "popupStatTotal": {
+    "message": "Всего"
+  },
+  "popupPickButton": {
+    "message": "⊙ Выбрать элемент"
+  },
+  "popupOpenOptions": {
+    "message": "Настройки"
+  },
+  "popupDonate": {
+    "message": "♥ Поддержать"
+  },
+  "popupSystemPage": {
+    "message": "Системная страница"
+  },
+  "optionsPageTitle": {
+    "message": "FAdblock - Настройки"
+  },
+  "optionsSubtitle": {
+    "message": "Настройки"
+  },
+  "optionsStatsTitle": {
+    "message": "Статистика"
+  },
+  "optionsTotalBlocked": {
+    "message": "Заблокировано всего"
+  },
+  "optionsToday": {
+    "message": "Сегодня"
+  },
+  "optionsResetStats": {
+    "message": "Сбросить статистику"
+  },
+  "optionsChartAria": {
+    "message": "График блокировок за 7 дней"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Разрешенные сайты"
+  },
+  "optionsWhitelistHint": {
+    "message": "На этих сайтах блокировка отключена."
+  },
+  "optionsDomainInputAria": {
+    "message": "Домен сайта"
+  },
+  "commonAdd": {
+    "message": "Добавить"
+  },
+  "optionsWhitelistAria": {
+    "message": "Список разрешенных сайтов"
+  },
+  "commonEmptyList": {
+    "message": "Список пуст"
+  },
+  "optionsSiteStatsTitle": {
+    "message": "Статистика по сайтам"
+  },
+  "optionsSiteStatsHint": {
+    "message": "Сайты с наибольшим числом заблокированной рекламы (топ 10)."
+  },
+  "optionsSiteStatsEmpty": {
+    "message": "Пока нет данных"
+  },
+  "optionsClearSiteStats": {
+    "message": "Сбросить статистику сайтов"
+  },
+  "optionsSelectorsTitle": {
+    "message": "Пользовательские CSS-фильтры"
+  },
+  "optionsSelectorsHint": {
+    "message": "Добавьте собственные CSS-селекторы. Подходящие элементы будут скрываться на всех страницах."
+  },
+  "optionsSelectorInputAria": {
+    "message": "CSS-селектор"
+  },
+  "optionsSelectorListAria": {
+    "message": "Пользовательские CSS-селекторы"
+  },
+  "optionsBlockedTitle": {
+    "message": "Заблокированные домены"
+  },
+  "optionsBlockedHint": {
+    "message": "Список блокировок, добавленных вручную или через контекстное меню."
+  },
+  "optionsBlockInputAria": {
+    "message": "Домен для блокировки"
+  },
+  "optionsBlockedListAria": {
+    "message": "Заблокированные домены"
+  },
+  "optionsFiltersTitle": {
+    "message": "Список фильтров"
+  },
+  "optionsFiltersLoading": {
+    "message": "Загрузка..."
+  },
+  "optionsFiltersUpdate": {
+    "message": "Обновить сейчас"
+  },
+  "optionsFiltersUpdating": {
+    "message": "Обновление..."
+  },
   "optionsFiltersMeta": {
     "message": "Последнее обновление: $DATE$ · $COUNT$ доменов",
     "placeholders": {
-      "date": { "content": "$1" },
-      "count": { "content": "$2" }
+      "date": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$2"
+      }
     }
   },
-  "optionsFiltersEmpty": { "message": "Еще не загружено - нажмите «Обновить сейчас»." },
-  "optionsImportExportTitle": { "message": "Экспорт / импорт настроек" },
-  "optionsImportExportHint": { "message": "Сохраните или восстановите белый список, пользовательские CSS-фильтры и заблокированные домены в виде JSON-файла." },
-  "optionsExport": { "message": "⬇ Экспорт" },
-  "optionsImport": { "message": "⬆ Импорт" },
-  "optionsDonateTitle": { "message": "♥ Поддержать проект" },
-  "optionsDonateText": { "message": "FAdblock бесплатен и останется бесплатным. Если он вам нравится, угостите меня кофе." },
-  "optionsDonatePaypal": { "message": "Поддержать через PayPal" },
-  "optionsAboutTitle": { "message": "О проекте" },
-  "optionsAboutText": { "message": "FAdblock - это блокировщик рекламы с открытым исходным кодом для Chrome и Firefox. Manifest V3 · declarativeNetRequest · Косметические фильтры · Пропуск рекламы YouTube" },
-  "optionsAuthorLabel": { "message": "Автор" },
+  "optionsFiltersEmpty": {
+    "message": "Еще не загружено - нажмите «Обновить сейчас»."
+  },
+  "optionsImportExportTitle": {
+    "message": "Экспорт / импорт настроек"
+  },
+  "optionsImportExportHint": {
+    "message": "Сохраните или восстановите белый список, пользовательские CSS-фильтры и заблокированные домены в виде JSON-файла."
+  },
+  "optionsExport": {
+    "message": "⬇ Экспорт"
+  },
+  "optionsImport": {
+    "message": "⬆ Импорт"
+  },
+  "optionsDonateTitle": {
+    "message": "♥ Поддержать проект"
+  },
+  "optionsDonateText": {
+    "message": "FAdblock бесплатен и останется бесплатным. Если он вам нравится, угостите меня кофе."
+  },
+  "optionsDonatePaypal": {
+    "message": "Поддержать через PayPal"
+  },
+  "optionsAboutTitle": {
+    "message": "О проекте"
+  },
+  "optionsAboutText": {
+    "message": "FAdblock is an open-source ad blocker for Firefox. Manifest V3 · declarativeNetRequest · Cosmetic filters · YouTube ad-skip · 18+ filter"
+  },
+  "optionsAuthorLabel": {
+    "message": "Автор"
+  },
   "removeDomainAria": {
     "message": "Удалить $DOMAIN$",
-    "placeholders": { "domain": { "content": "$1" } }
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
   "removeSelectorAria": {
     "message": "Удалить $SELECTOR$",
-    "placeholders": { "selector": { "content": "$1" } }
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
   },
   "removeBlockedAria": {
     "message": "Удалить $DOMAIN$",
-    "placeholders": { "domain": { "content": "$1" } }
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
-  "importError": { "message": "Не удалось прочитать файл - выберите корректный JSON-файл FAdblock." },
-  "pickerBarText": { "message": "FAdblock: выберите элемент, который хотите скрыть - нажмите ESC для выхода" },
+  "importError": {
+    "message": "Не удалось прочитать файл - выберите корректный JSON-файл FAdblock."
+  },
+  "pickerBarText": {
+    "message": "FAdblock: выберите элемент, который хотите скрыть - нажмите ESC для выхода"
+  },
   "pickerConfirm": {
     "message": "FAdblock: скрыть этот элемент?\n\n$SELECTOR$",
-    "placeholders": { "selector": { "content": "$1" } }
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
   },
-  "chartDay0": { "message": "Вс" },
-  "chartDay1": { "message": "Пн" },
-  "chartDay2": { "message": "Вт" },
-  "chartDay3": { "message": "Ср" },
-  "chartDay4": { "message": "Чт" },
-  "chartDay5": { "message": "Пт" },
-  "chartDay6": { "message": "Сб" },
-  "popup15m": { "message": "15м" },
-  "popup30m": { "message": "30м" },
-  "popup1h":  { "message": "1ч" },
-  "popupResume":    { "message": "↺ Возобновить" },
-  "popupSitePause": { "message": "Пауза сайта:" },
-  "optionsTypeStatsTitle": { "message": "Статистика по типам блокировок" },
-  "optionsTypeStatsHint":  { "message": "Какие типы запросов блокируются." },
-  "typeScript": { "message": "Скрипт" },
-  "typeImage":  { "message": "Изображение" },
-  "typeXhr":    { "message": "XHR/Fetch" },
-  "typeMedia":  { "message": "Медиа" },
-  "typeFrame":  { "message": "Фрейм" },
-  "typeOther":  { "message": "Другое" },
-  "optionsPrefsTitle":      { "message": "Настройки" },
-  "optionsNotifLabel":      { "message": "Уведомления" },
-  "optionsNotifHint":       { "message": "Показывать уведомления о достижениях" },
-  "optionsBadgeColorLabel": { "message": "Цвет значка" },
-  "optionsAdultTitle":      { "message": "🔞 Фильтр контента для взрослых" },
-  "optionsAdultHint":       { "message": "Блокировать известные сайты 18+. Фильтрация YouTube работает автоматически." },
-  "optionsAdultBlockLabel": { "message": "Блокировка сайтов 18+" },
-  "optionsAdultBlockHint":  { "message": "Блокировать известные сайты для взрослых" },
-  "optionsYtFilterLabel":   { "message": "Фильтрация YouTube" },
-  "optionsYtFilterHint":    { "message": "Скрывать видео с 18+ ключевыми словами на YouTube" },
-  "pickerUndoText": { "message": "Элемент скрыт" },
-  "pickerUndo":     { "message": "Отменить" }
+  "chartDay0": {
+    "message": "Вс"
+  },
+  "chartDay1": {
+    "message": "Пн"
+  },
+  "chartDay2": {
+    "message": "Вт"
+  },
+  "chartDay3": {
+    "message": "Ср"
+  },
+  "chartDay4": {
+    "message": "Чт"
+  },
+  "chartDay5": {
+    "message": "Пт"
+  },
+  "chartDay6": {
+    "message": "Сб"
+  },
+  "popup15m": {
+    "message": "15м"
+  },
+  "popup30m": {
+    "message": "30м"
+  },
+  "popup1h": {
+    "message": "1ч"
+  },
+  "popupResume": {
+    "message": "↺ Возобновить"
+  },
+  "popupSitePause": {
+    "message": "Пауза сайта:"
+  },
+  "optionsTypeStatsTitle": {
+    "message": "Статистика по типам блокировок"
+  },
+  "optionsTypeStatsHint": {
+    "message": "Какие типы запросов блокируются."
+  },
+  "typeScript": {
+    "message": "Скрипт"
+  },
+  "typeImage": {
+    "message": "Изображение"
+  },
+  "typeXhr": {
+    "message": "XHR/Fetch"
+  },
+  "typeMedia": {
+    "message": "Медиа"
+  },
+  "typeFrame": {
+    "message": "Фрейм"
+  },
+  "typeOther": {
+    "message": "Другое"
+  },
+  "optionsPrefsTitle": {
+    "message": "Настройки"
+  },
+  "optionsNotifLabel": {
+    "message": "Уведомления"
+  },
+  "optionsNotifHint": {
+    "message": "Показывать уведомления о достижениях"
+  },
+  "optionsBadgeColorLabel": {
+    "message": "Цвет значка"
+  },
+  "optionsAdultTitle": {
+    "message": "🔞 Фильтр контента для взрослых"
+  },
+  "optionsAdultHint": {
+    "message": "Блокировать известные сайты 18+. Фильтрация YouTube работает автоматически."
+  },
+  "optionsAdultBlockLabel": {
+    "message": "Блокировка сайтов 18+"
+  },
+  "optionsAdultBlockHint": {
+    "message": "Блокировать известные сайты для взрослых"
+  },
+  "optionsYtFilterLabel": {
+    "message": "Фильтрация YouTube"
+  },
+  "optionsYtFilterHint": {
+    "message": "Скрывать видео с 18+ ключевыми словами на YouTube"
+  },
+  "pickerUndoText": {
+    "message": "Элемент скрыт"
+  },
+  "pickerUndo": {
+    "message": "Отменить"
+  }
 }

@@ -1,120 +1,326 @@
 {
-  "extName": { "message": "FAdblock" },
-  "extDescription": { "message": "Fast and lightweight ad blocker for Firefox and Chrome" },
-  "toggleAdblockCommand": { "message": "Toggle FAdblock" },
-  "actionTitleActive": { "message": "FAdblock - Active" },
-  "actionTitleDisabled": { "message": "FAdblock - Disabled" },
-  "contextMenuPick": { "message": "FAdblock: Block this element" },
-  "contextMenuDomain": { "message": "FAdblock: Block this domain" },
-  "milestoneTitle": { "message": "FAdblock" },
+  "extName": {
+    "message": "FAdblock"
+  },
+  "extDescription": {
+    "message": "Fast and lightweight ad blocker for Firefox. Skips YouTube ads, blocks trackers and adult content."
+  },
+  "toggleAdblockCommand": {
+    "message": "Toggle FAdblock"
+  },
+  "actionTitleActive": {
+    "message": "FAdblock - Active"
+  },
+  "actionTitleDisabled": {
+    "message": "FAdblock - Disabled"
+  },
+  "contextMenuPick": {
+    "message": "FAdblock: Block this element"
+  },
+  "contextMenuDomain": {
+    "message": "FAdblock: Block this domain"
+  },
+  "milestoneTitle": {
+    "message": "FAdblock"
+  },
   "milestoneMessage": {
     "message": "$COUNT$ ads blocked!",
-    "placeholders": { "count": { "content": "$1" } }
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   },
-  "popupGlobalToggleLabel": { "message": "Enable or disable all blocking" },
-  "popupSiteToggleLabel": { "message": "Enable or disable for this site" },
-  "popupStatTab": { "message": "This page" },
-  "popupStatToday": { "message": "Today" },
-  "popupStatTotal": { "message": "Total" },
-  "popupPickButton": { "message": "⊙ Pick element" },
-  "popupOpenOptions": { "message": "Settings" },
-  "popupDonate": { "message": "♥ Support" },
-  "popupSystemPage": { "message": "System page" },
-  "optionsPageTitle": { "message": "FAdblock - Settings" },
-  "optionsSubtitle": { "message": "Settings" },
-  "optionsStatsTitle": { "message": "Statistics" },
-  "optionsTotalBlocked": { "message": "Total blocked" },
-  "optionsToday": { "message": "Today" },
-  "optionsResetStats": { "message": "Reset statistics" },
-  "optionsChartAria": { "message": "7-day blocking chart" },
-  "optionsWhitelistTitle": { "message": "Allowed sites" },
-  "optionsWhitelistHint": { "message": "Blocking is disabled on these sites." },
-  "optionsDomainInputAria": { "message": "Site domain" },
-  "commonAdd": { "message": "Add" },
-  "optionsWhitelistAria": { "message": "Allowed sites list" },
-  "commonEmptyList": { "message": "List is empty" },
-  "optionsSiteStatsTitle": { "message": "Per-site statistics" },
-  "optionsSiteStatsHint": { "message": "Sites with the most blocked ads (top 10)." },
-  "optionsSiteStatsEmpty": { "message": "No data yet" },
-  "optionsClearSiteStats": { "message": "Reset site statistics" },
-  "optionsSelectorsTitle": { "message": "Custom CSS filters" },
-  "optionsSelectorsHint": { "message": "Add your own CSS selectors. Matching elements are hidden on every page." },
-  "optionsSelectorInputAria": { "message": "CSS selector" },
-  "optionsSelectorListAria": { "message": "Custom CSS selectors" },
-  "optionsBlockedTitle": { "message": "Blocked domains" },
-  "optionsBlockedHint": { "message": "Domains blocked from the context menu or added manually." },
-  "optionsBlockInputAria": { "message": "Domain to block" },
-  "optionsBlockedListAria": { "message": "Blocked domains" },
-  "optionsFiltersTitle": { "message": "Filter list" },
-  "optionsFiltersLoading": { "message": "Loading..." },
-  "optionsFiltersUpdate": { "message": "Update now" },
-  "optionsFiltersUpdating": { "message": "Updating..." },
+  "popupGlobalToggleLabel": {
+    "message": "Enable or disable all blocking"
+  },
+  "popupSiteToggleLabel": {
+    "message": "Enable or disable for this site"
+  },
+  "popupStatTab": {
+    "message": "This page"
+  },
+  "popupStatToday": {
+    "message": "Today"
+  },
+  "popupStatTotal": {
+    "message": "Total"
+  },
+  "popupPickButton": {
+    "message": "⊙ Pick element"
+  },
+  "popupOpenOptions": {
+    "message": "Settings"
+  },
+  "popupDonate": {
+    "message": "♥ Support"
+  },
+  "popupSystemPage": {
+    "message": "System page"
+  },
+  "optionsPageTitle": {
+    "message": "FAdblock - Settings"
+  },
+  "optionsSubtitle": {
+    "message": "Settings"
+  },
+  "optionsStatsTitle": {
+    "message": "Statistics"
+  },
+  "optionsTotalBlocked": {
+    "message": "Total blocked"
+  },
+  "optionsToday": {
+    "message": "Today"
+  },
+  "optionsResetStats": {
+    "message": "Reset statistics"
+  },
+  "optionsChartAria": {
+    "message": "7-day blocking chart"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Allowed sites"
+  },
+  "optionsWhitelistHint": {
+    "message": "Blocking is disabled on these sites."
+  },
+  "optionsDomainInputAria": {
+    "message": "Site domain"
+  },
+  "commonAdd": {
+    "message": "Add"
+  },
+  "optionsWhitelistAria": {
+    "message": "Allowed sites list"
+  },
+  "commonEmptyList": {
+    "message": "List is empty"
+  },
+  "optionsSiteStatsTitle": {
+    "message": "Per-site statistics"
+  },
+  "optionsSiteStatsHint": {
+    "message": "Sites with the most blocked ads (top 10)."
+  },
+  "optionsSiteStatsEmpty": {
+    "message": "No data yet"
+  },
+  "optionsClearSiteStats": {
+    "message": "Reset site statistics"
+  },
+  "optionsSelectorsTitle": {
+    "message": "Custom CSS filters"
+  },
+  "optionsSelectorsHint": {
+    "message": "Add your own CSS selectors. Matching elements are hidden on every page."
+  },
+  "optionsSelectorInputAria": {
+    "message": "CSS selector"
+  },
+  "optionsSelectorListAria": {
+    "message": "Custom CSS selectors"
+  },
+  "optionsBlockedTitle": {
+    "message": "Blocked domains"
+  },
+  "optionsBlockedHint": {
+    "message": "Domains blocked from the context menu or added manually."
+  },
+  "optionsBlockInputAria": {
+    "message": "Domain to block"
+  },
+  "optionsBlockedListAria": {
+    "message": "Blocked domains"
+  },
+  "optionsFiltersTitle": {
+    "message": "Filter list"
+  },
+  "optionsFiltersLoading": {
+    "message": "Loading..."
+  },
+  "optionsFiltersUpdate": {
+    "message": "Update now"
+  },
+  "optionsFiltersUpdating": {
+    "message": "Updating..."
+  },
   "optionsFiltersMeta": {
     "message": "Last updated: $DATE$ · $COUNT$ domains",
     "placeholders": {
-      "date": { "content": "$1" },
-      "count": { "content": "$2" }
+      "date": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$2"
+      }
     }
   },
-  "optionsFiltersEmpty": { "message": "Not downloaded yet - click \"Update now\"." },
-  "optionsImportExportTitle": { "message": "Export / import settings" },
-  "optionsImportExportHint": { "message": "Save or restore the whitelist, custom CSS filters, and blocked domains as a JSON file." },
-  "optionsExport": { "message": "⬇ Export" },
-  "optionsImport": { "message": "⬆ Import" },
-  "optionsDonateTitle": { "message": "♥ Support the project" },
-  "optionsDonateText": { "message": "FAdblock is free and will stay free. If you like it, buy me a coffee." },
-  "optionsDonatePaypal": { "message": "Support with PayPal" },
-  "optionsAboutTitle": { "message": "About" },
-  "optionsAboutText": { "message": "FAdblock is an open-source ad blocker for Chrome and Firefox. Manifest V3 · declarativeNetRequest · Cosmetic filters · YouTube ad-skip" },
-  "optionsAuthorLabel": { "message": "Author" },
+  "optionsFiltersEmpty": {
+    "message": "Not downloaded yet - click \"Update now\"."
+  },
+  "optionsImportExportTitle": {
+    "message": "Export / import settings"
+  },
+  "optionsImportExportHint": {
+    "message": "Save or restore the whitelist, custom CSS filters, and blocked domains as a JSON file."
+  },
+  "optionsExport": {
+    "message": "⬇ Export"
+  },
+  "optionsImport": {
+    "message": "⬆ Import"
+  },
+  "optionsDonateTitle": {
+    "message": "♥ Support the project"
+  },
+  "optionsDonateText": {
+    "message": "FAdblock is free and will stay free. If you like it, buy me a coffee."
+  },
+  "optionsDonatePaypal": {
+    "message": "Support with PayPal"
+  },
+  "optionsAboutTitle": {
+    "message": "About"
+  },
+  "optionsAboutText": {
+    "message": "FAdblock is an open-source ad blocker for Firefox. Manifest V3 · declarativeNetRequest · Cosmetic filters · YouTube ad-skip · 18+ filter"
+  },
+  "optionsAuthorLabel": {
+    "message": "Author"
+  },
   "removeDomainAria": {
     "message": "Remove $DOMAIN$",
-    "placeholders": { "domain": { "content": "$1" } }
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
   "removeSelectorAria": {
     "message": "Remove $SELECTOR$",
-    "placeholders": { "selector": { "content": "$1" } }
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
   },
   "removeBlockedAria": {
     "message": "Remove $DOMAIN$",
-    "placeholders": { "domain": { "content": "$1" } }
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
-  "importError": { "message": "Could not read file - choose a valid FAdblock JSON file." },
-  "pickerBarText": { "message": "FAdblock: choose the element you want to hide - press ESC to exit" },
+  "importError": {
+    "message": "Could not read file - choose a valid FAdblock JSON file."
+  },
+  "pickerBarText": {
+    "message": "FAdblock: choose the element you want to hide - press ESC to exit"
+  },
   "pickerConfirm": {
     "message": "FAdblock: hide this element?\n\n$SELECTOR$",
-    "placeholders": { "selector": { "content": "$1" } }
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
   },
-  "chartDay0": { "message": "Sun" },
-  "chartDay1": { "message": "Mon" },
-  "chartDay2": { "message": "Tue" },
-  "chartDay3": { "message": "Wed" },
-  "chartDay4": { "message": "Thu" },
-  "chartDay5": { "message": "Fri" },
-  "chartDay6": { "message": "Sat" },
-  "popup15m": { "message": "15m" },
-  "popup30m": { "message": "30m" },
-  "popup1h":  { "message": "1h" },
-  "popupResume":    { "message": "↺ Resume" },
-  "popupSitePause": { "message": "Site pause:" },
-  "optionsTypeStatsTitle": { "message": "Block type breakdown" },
-  "optionsTypeStatsHint":  { "message": "Which request types are being blocked." },
-  "typeScript": { "message": "Script" },
-  "typeImage":  { "message": "Image" },
-  "typeXhr":    { "message": "XHR/Fetch" },
-  "typeMedia":  { "message": "Media" },
-  "typeFrame":  { "message": "Frame" },
-  "typeOther":  { "message": "Other" },
-  "optionsPrefsTitle":      { "message": "Preferences" },
-  "optionsNotifLabel":      { "message": "Notifications" },
-  "optionsNotifHint":       { "message": "Show milestone notifications" },
-  "optionsBadgeColorLabel": { "message": "Badge color" },
-  "optionsAdultTitle":      { "message": "🔞 Adult content filter" },
-  "optionsAdultHint":       { "message": "Block known adult sites. YouTube keyword filtering works automatically." },
-  "optionsAdultBlockLabel": { "message": "Block adult sites" },
-  "optionsAdultBlockHint":  { "message": "Block access to known adult content sites" },
-  "optionsYtFilterLabel":   { "message": "YouTube filtering" },
-  "optionsYtFilterHint":    { "message": "Hide videos with adult keywords on YouTube" },
-  "pickerUndoText": { "message": "Element hidden" },
-  "pickerUndo":     { "message": "Undo" }
+  "chartDay0": {
+    "message": "Sun"
+  },
+  "chartDay1": {
+    "message": "Mon"
+  },
+  "chartDay2": {
+    "message": "Tue"
+  },
+  "chartDay3": {
+    "message": "Wed"
+  },
+  "chartDay4": {
+    "message": "Thu"
+  },
+  "chartDay5": {
+    "message": "Fri"
+  },
+  "chartDay6": {
+    "message": "Sat"
+  },
+  "popup15m": {
+    "message": "15m"
+  },
+  "popup30m": {
+    "message": "30m"
+  },
+  "popup1h": {
+    "message": "1h"
+  },
+  "popupResume": {
+    "message": "↺ Resume"
+  },
+  "popupSitePause": {
+    "message": "Site pause:"
+  },
+  "optionsTypeStatsTitle": {
+    "message": "Block type breakdown"
+  },
+  "optionsTypeStatsHint": {
+    "message": "Which request types are being blocked."
+  },
+  "typeScript": {
+    "message": "Script"
+  },
+  "typeImage": {
+    "message": "Image"
+  },
+  "typeXhr": {
+    "message": "XHR/Fetch"
+  },
+  "typeMedia": {
+    "message": "Media"
+  },
+  "typeFrame": {
+    "message": "Frame"
+  },
+  "typeOther": {
+    "message": "Other"
+  },
+  "optionsPrefsTitle": {
+    "message": "Preferences"
+  },
+  "optionsNotifLabel": {
+    "message": "Notifications"
+  },
+  "optionsNotifHint": {
+    "message": "Show milestone notifications"
+  },
+  "optionsBadgeColorLabel": {
+    "message": "Badge color"
+  },
+  "optionsAdultTitle": {
+    "message": "🔞 Adult content filter"
+  },
+  "optionsAdultHint": {
+    "message": "Block known adult sites. YouTube keyword filtering works automatically."
+  },
+  "optionsAdultBlockLabel": {
+    "message": "Block adult sites"
+  },
+  "optionsAdultBlockHint": {
+    "message": "Block access to known adult content sites"
+  },
+  "optionsYtFilterLabel": {
+    "message": "YouTube filtering"
+  },
+  "optionsYtFilterHint": {
+    "message": "Hide videos with adult keywords on YouTube"
+  },
+  "pickerUndoText": {
+    "message": "Element hidden"
+  },
+  "pickerUndo": {
+    "message": "Undo"
+  }
 }
