@@ -272,6 +272,6 @@
         state.navHandler = null;
       }
     };
-    window.addEventListener('unload', state.unloadHandler, { once: true });
+    window.addEventListener('pagehide', state.unloadHandler, { once: true });
   }
 })();

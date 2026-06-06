@@ -1,0 +1,326 @@
+{
+  "extName": {
+    "message": "FAdblock"
+  },
+  "extDescription": {
+    "message": "Schneller und leichter Werbeblocker für Firefox und Chrome"
+  },
+  "toggleAdblockCommand": {
+    "message": "FAdblock umschalten"
+  },
+  "actionTitleActive": {
+    "message": "FAdblock - Aktiv"
+  },
+  "actionTitleDisabled": {
+    "message": "FAdblock - Deaktiviert"
+  },
+  "contextMenuPick": {
+    "message": "FAdblock: Dieses Element blockieren"
+  },
+  "contextMenuDomain": {
+    "message": "FAdblock: Diese Domain blockieren"
+  },
+  "milestoneTitle": {
+    "message": "FAdblock"
+  },
+  "milestoneMessage": {
+    "message": "$COUNT$ Anzeigen blockiert!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupGlobalToggleLabel": {
+    "message": "Gesamte Blockierung ein- oder ausschalten"
+  },
+  "popupSiteToggleLabel": {
+    "message": "Für diese Website ein- oder ausschalten"
+  },
+  "popupStatTab": {
+    "message": "Diese Seite"
+  },
+  "popupStatToday": {
+    "message": "Heute"
+  },
+  "popupStatTotal": {
+    "message": "Gesamt"
+  },
+  "popupPickButton": {
+    "message": "⊙ Element auswählen"
+  },
+  "popupOpenOptions": {
+    "message": "Einstellungen"
+  },
+  "popupDonate": {
+    "message": "♥ Unterstützen"
+  },
+  "popupSystemPage": {
+    "message": "Systemseite"
+  },
+  "optionsPageTitle": {
+    "message": "FAdblock - Einstellungen"
+  },
+  "optionsSubtitle": {
+    "message": "Einstellungen"
+  },
+  "optionsStatsTitle": {
+    "message": "Statistik"
+  },
+  "optionsTotalBlocked": {
+    "message": "Insgesamt blockiert"
+  },
+  "optionsToday": {
+    "message": "Heute"
+  },
+  "optionsResetStats": {
+    "message": "Statistik zurücksetzen"
+  },
+  "optionsChartAria": {
+    "message": "7-Tage-Blockierungsdiagramm"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Erlaubte Websites"
+  },
+  "optionsWhitelistHint": {
+    "message": "Auf diesen Websites ist die Blockierung deaktiviert."
+  },
+  "optionsDomainInputAria": {
+    "message": "Website-Domain"
+  },
+  "commonAdd": {
+    "message": "Hinzufügen"
+  },
+  "optionsWhitelistAria": {
+    "message": "Liste erlaubter Websites"
+  },
+  "commonEmptyList": {
+    "message": "Liste ist leer"
+  },
+  "optionsSiteStatsTitle": {
+    "message": "Statistik pro Website"
+  },
+  "optionsSiteStatsHint": {
+    "message": "Websites mit den meisten blockierten Anzeigen (Top 10)."
+  },
+  "optionsSiteStatsEmpty": {
+    "message": "Noch keine Daten"
+  },
+  "optionsClearSiteStats": {
+    "message": "Website-Statistik zurücksetzen"
+  },
+  "optionsSelectorsTitle": {
+    "message": "Benutzerdefinierte CSS-Filter"
+  },
+  "optionsSelectorsHint": {
+    "message": "Eigene CSS-Selektoren hinzufügen. Passende Elemente werden auf allen Seiten ausgeblendet."
+  },
+  "optionsSelectorInputAria": {
+    "message": "CSS-Selektor"
+  },
+  "optionsSelectorListAria": {
+    "message": "Benutzerdefinierte CSS-Selektoren"
+  },
+  "optionsBlockedTitle": {
+    "message": "Blockierte Domains"
+  },
+  "optionsBlockedHint": {
+    "message": "Domains, die über das Kontextmenü oder manuell blockiert wurden."
+  },
+  "optionsBlockInputAria": {
+    "message": "Zu blockierende Domain"
+  },
+  "optionsBlockedListAria": {
+    "message": "Blockierte Domains"
+  },
+  "optionsFiltersTitle": {
+    "message": "Filterliste"
+  },
+  "optionsFiltersLoading": {
+    "message": "Wird geladen..."
+  },
+  "optionsFiltersUpdate": {
+    "message": "Jetzt aktualisieren"
+  },
+  "optionsFiltersUpdating": {
+    "message": "Wird aktualisiert..."
+  },
+  "optionsFiltersMeta": {
+    "message": "Zuletzt aktualisiert: $DATE$ · $COUNT$ Domains",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$2"
+      }
+    }
+  },
+  "optionsFiltersEmpty": {
+    "message": "Noch nicht heruntergeladen - klicken Sie auf \"Jetzt aktualisieren\"."
+  },
+  "optionsImportExportTitle": {
+    "message": "Einstellungen exportieren / importieren"
+  },
+  "optionsImportExportHint": {
+    "message": "Whitelist, benutzerdefinierte CSS-Filter und blockierte Domains als JSON-Datei speichern oder wiederherstellen."
+  },
+  "optionsExport": {
+    "message": "⬇ Exportieren"
+  },
+  "optionsImport": {
+    "message": "⬆ Importieren"
+  },
+  "optionsDonateTitle": {
+    "message": "♥ Projekt unterstützen"
+  },
+  "optionsDonateText": {
+    "message": "FAdblock ist kostenlos und bleibt kostenlos. Wenn es Ihnen gefällt, spendieren Sie mir einen Kaffee."
+  },
+  "optionsDonatePaypal": {
+    "message": "Mit PayPal unterstützen"
+  },
+  "optionsAboutTitle": {
+    "message": "Über"
+  },
+  "optionsAboutText": {
+    "message": "FAdblock ist ein Open-Source-Werbeblocker für Chrome und Firefox. Manifest V3 · declarativeNetRequest · Kosmetische Filter · YouTube-Anzeigen überspringen"
+  },
+  "optionsAuthorLabel": {
+    "message": "Autor"
+  },
+  "removeDomainAria": {
+    "message": "$DOMAIN$ entfernen",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "removeSelectorAria": {
+    "message": "$SELECTOR$ entfernen",
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
+  },
+  "removeBlockedAria": {
+    "message": "$DOMAIN$ entfernen",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "importError": {
+    "message": "Datei konnte nicht gelesen werden - wählen Sie eine gültige FAdblock-JSON-Datei aus."
+  },
+  "pickerBarText": {
+    "message": "FAdblock: Wählen Sie das Element aus, das Sie ausblenden möchten - ESC zum Beenden"
+  },
+  "pickerConfirm": {
+    "message": "FAdblock: Dieses Element ausblenden?\n\n$SELECTOR$",
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
+  },
+  "chartDay0": {
+    "message": "So"
+  },
+  "chartDay1": {
+    "message": "Mo"
+  },
+  "chartDay2": {
+    "message": "Di"
+  },
+  "chartDay3": {
+    "message": "Mi"
+  },
+  "chartDay4": {
+    "message": "Do"
+  },
+  "chartDay5": {
+    "message": "Fr"
+  },
+  "chartDay6": {
+    "message": "Sa"
+  },
+  "popup15m": {
+    "message": "15 Min"
+  },
+  "popup30m": {
+    "message": "30 Min"
+  },
+  "popup1h": {
+    "message": "1 Std"
+  },
+  "popupResume": {
+    "message": "↺ Fortsetzen"
+  },
+  "popupSitePause": {
+    "message": "Site-Pause:"
+  },
+  "optionsTypeStatsTitle": {
+    "message": "Blockierungstyp-Statistik"
+  },
+  "optionsTypeStatsHint": {
+    "message": "Welche Anfragentypen blockiert werden."
+  },
+  "typeScript": {
+    "message": "Skript"
+  },
+  "typeImage": {
+    "message": "Bild"
+  },
+  "typeXhr": {
+    "message": "XHR/Fetch"
+  },
+  "typeMedia": {
+    "message": "Medien"
+  },
+  "typeFrame": {
+    "message": "Frame"
+  },
+  "typeOther": {
+    "message": "Sonstige"
+  },
+  "optionsPrefsTitle": {
+    "message": "Einstellungen"
+  },
+  "optionsNotifLabel": {
+    "message": "Benachrichtigungen"
+  },
+  "optionsNotifHint": {
+    "message": "Meilenstein-Benachrichtigungen anzeigen"
+  },
+  "optionsBadgeColorLabel": {
+    "message": "Abzeichen-Farbe"
+  },
+  "optionsAdultTitle": {
+    "message": "🔞 Erwachsenen-Inhaltsfilter"
+  },
+  "optionsAdultHint": {
+    "message": "Bekannte 18+-Seiten blockieren. YouTube-Filterung läuft automatisch."
+  },
+  "optionsAdultBlockLabel": {
+    "message": "18+-Seiten blockieren"
+  },
+  "optionsAdultBlockHint": {
+    "message": "Zugriff auf bekannte Erwachsenen-Seiten blockieren"
+  },
+  "optionsYtFilterLabel": {
+    "message": "YouTube-Filterung"
+  },
+  "optionsYtFilterHint": {
+    "message": "Videos mit 18+-Schlüsselwörtern auf YouTube ausblenden"
+  },
+  "pickerUndoText": {
+    "message": "Element ausgeblendet"
+  },
+  "pickerUndo": {
+    "message": "Rückgängig"
+  }
+}

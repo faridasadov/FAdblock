@@ -100,7 +100,7 @@ const AD_URL_FILTERS = [...AD_DOMAINS].flatMap(d => [
 // --- Init ---
 async function loadState() {
   const data = await chrome.storage.local.get([
-    ENABLED_KEY, WHITELIST_KEY, PAUSE_KEY, SITE_PAUSE_KEY,
+    ENABLED_KEY, WHITELIST_KEY, CUSTOM_BLOCKED_KEY, PAUSE_KEY, SITE_PAUSE_KEY,
     NOTIF_ENABLED_KEY, BADGE_COLOR_KEY, ADULT_FILTER_KEY
   ]);
   _enabled            = data[ENABLED_KEY] !== false;
@@ -110,6 +110,10 @@ async function loadState() {
   _notifEnabled       = data[NOTIF_ENABLED_KEY] !== false;
   _badgeColor         = data[BADGE_COLOR_KEY] || 'red';
   _adultFilterEnabled = data[ADULT_FILTER_KEY] === true;
+
+  // Restore DNR rules after browser restart
+  await syncWhitelistRules(data[WHITELIST_KEY] || []);
+  await syncCustomBlockedRules(data[CUSTOM_BLOCKED_KEY] || []);
 
   // Pull preferences from sync storage
   try {
@@ -121,8 +125,12 @@ async function loadState() {
 }
 loadState();
 
+chrome.runtime.onStartup.addListener(() => {
+  loadState().catch(() => {});
+});
+
 chrome.runtime.onInstalled.addListener(async () => {
-  const data = await chrome.storage.local.get([STATS_KEY, ENABLED_KEY]);
+  const data = await chrome.storage.local.get([STATS_KEY, ENABLED_KEY, WHITELIST_KEY, CUSTOM_BLOCKED_KEY]);
   if (!data[STATS_KEY]) {
     await chrome.storage.local.set({
       [STATS_KEY]: { total: 0, today: 0, lastReset: new Date().toDateString() }
@@ -131,6 +139,8 @@ chrome.runtime.onInstalled.addListener(async () => {
   if (data[ENABLED_KEY] === undefined) {
     await chrome.storage.local.set({ [ENABLED_KEY]: true });
   }
+  await syncWhitelistRules(data[WHITELIST_KEY] || []);
+  await syncCustomBlockedRules(data[CUSTOM_BLOCKED_KEY] || []);
   updateBadgeState(_enabled);
 
   chrome.alarms.get('updateFilters', existing => {
@@ -373,11 +383,12 @@ async function flushStats() {
 async function blockCustomDomain(domain) {
   const data = await chrome.storage.local.get(CUSTOM_BLOCKED_KEY);
   const list = data[CUSTOM_BLOCKED_KEY] || [];
-  if (list.includes(domain)) return;
-  const updated = [...list, domain];
-  await chrome.storage.local.set({ [CUSTOM_BLOCKED_KEY]: updated });
+  const updated = list.includes(domain) ? list : [...list, domain];
+  if (!list.includes(domain)) {
+    await chrome.storage.local.set({ [CUSTOM_BLOCKED_KEY]: updated });
+    chrome.storage.sync.set({ [CUSTOM_BLOCKED_KEY]: updated }).catch(() => {});
+  }
   await syncCustomBlockedRules(updated);
-  chrome.storage.sync.set({ [CUSTOM_BLOCKED_KEY]: updated }).catch(() => {});
 }
 
 async function syncCustomBlockedRules(list) {

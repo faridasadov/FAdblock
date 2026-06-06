@@ -1,0 +1,326 @@
+{
+  "extName": {
+    "message": "FAdblock"
+  },
+  "extDescription": {
+    "message": "Швидкий і легкий блокувальник реклами для Firefox і Chrome"
+  },
+  "toggleAdblockCommand": {
+    "message": "Увімкнути або вимкнути FAdblock"
+  },
+  "actionTitleActive": {
+    "message": "FAdblock - Увімкнено"
+  },
+  "actionTitleDisabled": {
+    "message": "FAdblock - Вимкнено"
+  },
+  "contextMenuPick": {
+    "message": "FAdblock: заблокувати цей елемент"
+  },
+  "contextMenuDomain": {
+    "message": "FAdblock: заблокувати цей домен"
+  },
+  "milestoneTitle": {
+    "message": "FAdblock"
+  },
+  "milestoneMessage": {
+    "message": "Заблоковано $COUNT$ реклам!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupGlobalToggleLabel": {
+    "message": "Увімкнути або вимкнути все блокування"
+  },
+  "popupSiteToggleLabel": {
+    "message": "Увімкнути або вимкнути для цього сайту"
+  },
+  "popupStatTab": {
+    "message": "Ця сторінка"
+  },
+  "popupStatToday": {
+    "message": "Сьогодні"
+  },
+  "popupStatTotal": {
+    "message": "Усього"
+  },
+  "popupPickButton": {
+    "message": "⊙ Вибрати елемент"
+  },
+  "popupOpenOptions": {
+    "message": "Налаштування"
+  },
+  "popupDonate": {
+    "message": "♥ Підтримати"
+  },
+  "popupSystemPage": {
+    "message": "Системна сторінка"
+  },
+  "optionsPageTitle": {
+    "message": "FAdblock - Налаштування"
+  },
+  "optionsSubtitle": {
+    "message": "Налаштування"
+  },
+  "optionsStatsTitle": {
+    "message": "Статистика"
+  },
+  "optionsTotalBlocked": {
+    "message": "Заблоковано всього"
+  },
+  "optionsToday": {
+    "message": "Сьогодні"
+  },
+  "optionsResetStats": {
+    "message": "Скинути статистику"
+  },
+  "optionsChartAria": {
+    "message": "Графік блокування за 7 днів"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Дозволені сайти"
+  },
+  "optionsWhitelistHint": {
+    "message": "На цих сайтах блокування вимкнене."
+  },
+  "optionsDomainInputAria": {
+    "message": "Домен сайту"
+  },
+  "commonAdd": {
+    "message": "Додати"
+  },
+  "optionsWhitelistAria": {
+    "message": "Список дозволених сайтів"
+  },
+  "commonEmptyList": {
+    "message": "Список порожній"
+  },
+  "optionsSiteStatsTitle": {
+    "message": "Статистика за сайтами"
+  },
+  "optionsSiteStatsHint": {
+    "message": "Сайти з найбільшою кількістю заблокованої реклами (топ 10)."
+  },
+  "optionsSiteStatsEmpty": {
+    "message": "Поки що немає даних"
+  },
+  "optionsClearSiteStats": {
+    "message": "Скинути статистику сайтів"
+  },
+  "optionsSelectorsTitle": {
+    "message": "Власні CSS-фільтри"
+  },
+  "optionsSelectorsHint": {
+    "message": "Додайте власні CSS-селектори. Відповідні елементи будуть приховані на всіх сторінках."
+  },
+  "optionsSelectorInputAria": {
+    "message": "CSS-селектор"
+  },
+  "optionsSelectorListAria": {
+    "message": "Власні CSS-селектори"
+  },
+  "optionsBlockedTitle": {
+    "message": "Заблоковані домени"
+  },
+  "optionsBlockedHint": {
+    "message": "Домени, заблоковані через контекстне меню або додані вручну."
+  },
+  "optionsBlockInputAria": {
+    "message": "Домен для блокування"
+  },
+  "optionsBlockedListAria": {
+    "message": "Заблоковані домени"
+  },
+  "optionsFiltersTitle": {
+    "message": "Список фільтрів"
+  },
+  "optionsFiltersLoading": {
+    "message": "Завантаження..."
+  },
+  "optionsFiltersUpdate": {
+    "message": "Оновити зараз"
+  },
+  "optionsFiltersUpdating": {
+    "message": "Оновлення..."
+  },
+  "optionsFiltersMeta": {
+    "message": "Останнє оновлення: $DATE$ · $COUNT$ доменів",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$2"
+      }
+    }
+  },
+  "optionsFiltersEmpty": {
+    "message": "Ще не завантажено - натисніть \"Оновити зараз\"."
+  },
+  "optionsImportExportTitle": {
+    "message": "Експорт / імпорт налаштувань"
+  },
+  "optionsImportExportHint": {
+    "message": "Збережіть або відновіть білий список, власні CSS-фільтри та заблоковані домени у файлі JSON."
+  },
+  "optionsExport": {
+    "message": "⬇ Експортувати"
+  },
+  "optionsImport": {
+    "message": "⬆ Імпортувати"
+  },
+  "optionsDonateTitle": {
+    "message": "♥ Підтримати проєкт"
+  },
+  "optionsDonateText": {
+    "message": "FAdblock безкоштовний і залишиться безкоштовним. Якщо вам подобається, пригостіть мене кавою."
+  },
+  "optionsDonatePaypal": {
+    "message": "Підтримати через PayPal"
+  },
+  "optionsAboutTitle": {
+    "message": "Про розширення"
+  },
+  "optionsAboutText": {
+    "message": "FAdblock — це блокувальник реклами з відкритим кодом для Chrome і Firefox. Manifest V3 · declarativeNetRequest · Косметичні фільтри · Пропуск реклами YouTube"
+  },
+  "optionsAuthorLabel": {
+    "message": "Автор"
+  },
+  "removeDomainAria": {
+    "message": "Видалити $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "removeSelectorAria": {
+    "message": "Видалити $SELECTOR$",
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
+  },
+  "removeBlockedAria": {
+    "message": "Видалити $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "importError": {
+    "message": "Не вдалося прочитати файл - виберіть дійсний JSON-файл FAdblock."
+  },
+  "pickerBarText": {
+    "message": "FAdblock: виберіть елемент, який потрібно приховати - натисніть ESC для виходу"
+  },
+  "pickerConfirm": {
+    "message": "FAdblock: приховати цей елемент?\n\n$SELECTOR$",
+    "placeholders": {
+      "selector": {
+        "content": "$1"
+      }
+    }
+  },
+  "chartDay0": {
+    "message": "Нд"
+  },
+  "chartDay1": {
+    "message": "Пн"
+  },
+  "chartDay2": {
+    "message": "Вт"
+  },
+  "chartDay3": {
+    "message": "Ср"
+  },
+  "chartDay4": {
+    "message": "Чт"
+  },
+  "chartDay5": {
+    "message": "Пт"
+  },
+  "chartDay6": {
+    "message": "Сб"
+  },
+  "popup15m": {
+    "message": "15хв"
+  },
+  "popup30m": {
+    "message": "30хв"
+  },
+  "popup1h": {
+    "message": "1год"
+  },
+  "popupResume": {
+    "message": "↺ Відновити"
+  },
+  "popupSitePause": {
+    "message": "Пауза сайту:"
+  },
+  "optionsTypeStatsTitle": {
+    "message": "Статистика за типами блокувань"
+  },
+  "optionsTypeStatsHint": {
+    "message": "Які типи запитів блокуються."
+  },
+  "typeScript": {
+    "message": "Скрипт"
+  },
+  "typeImage": {
+    "message": "Зображення"
+  },
+  "typeXhr": {
+    "message": "XHR/Fetch"
+  },
+  "typeMedia": {
+    "message": "Медіа"
+  },
+  "typeFrame": {
+    "message": "Фрейм"
+  },
+  "typeOther": {
+    "message": "Інше"
+  },
+  "optionsPrefsTitle": {
+    "message": "Налаштування"
+  },
+  "optionsNotifLabel": {
+    "message": "Сповіщення"
+  },
+  "optionsNotifHint": {
+    "message": "Показувати сповіщення про досягнення"
+  },
+  "optionsBadgeColorLabel": {
+    "message": "Колір значка"
+  },
+  "optionsAdultTitle": {
+    "message": "🔞 Фільтр контенту для дорослих"
+  },
+  "optionsAdultHint": {
+    "message": "Блокувати відомі сайти 18+. Фільтрація YouTube працює автоматично."
+  },
+  "optionsAdultBlockLabel": {
+    "message": "Блокувати сайти 18+"
+  },
+  "optionsAdultBlockHint": {
+    "message": "Блокувати доступ до відомих сайтів для дорослих"
+  },
+  "optionsYtFilterLabel": {
+    "message": "Фільтрація YouTube"
+  },
+  "optionsYtFilterHint": {
+    "message": "Приховувати відео з ключовими словами 18+ на YouTube"
+  },
+  "pickerUndoText": {
+    "message": "Елемент приховано"
+  },
+  "pickerUndo": {
+    "message": "Скасувати"
+  }
+}
