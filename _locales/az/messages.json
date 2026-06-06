@@ -322,5 +322,17 @@
   },
   "pickerUndo": {
     "message": "Geri al"
+  },
+  "optionsYtRestrictedLabel": {
+    "message": "YouTube Restricted Mode"
+  },
+  "optionsYtRestrictedHint": {
+    "message": "YouTube-un öz server filtrini aktiv et (ən güclü metod)"
+  },
+  "optionsSocialFilterLabel": {
+    "message": "Reddit · TikTok · Twitter/X filtri"
+  },
+  "optionsSocialFilterHint": {
+    "message": "Bu platformalarda 18+ məzmunu gizlət"
   }
 }

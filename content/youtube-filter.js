@@ -125,9 +125,27 @@
     else    { stopObserver(); restoreAll(); }
   }
 
-  chrome.storage.local.get(KEY, data => apply(data[KEY] === true));
+  // YouTube Restricted Mode via cookie — no extra permission needed
+  // PREF=f4=4000000 activates YouTube's own server-side content restriction
+  const YT_RESTRICTED_KEY = 'yt_restricted_mode';
+
+  function setRestrictedMode(on) {
+    if (on) {
+      document.cookie = 'PREF=f4=4000000; domain=.youtube.com; path=/; max-age=31536000; SameSite=None; Secure';
+    } else {
+      document.cookie = 'PREF=; domain=.youtube.com; path=/; max-age=0';
+    }
+  }
+
+  chrome.storage.local.get([KEY, YT_RESTRICTED_KEY], data => {
+    apply(data[KEY] === true);
+    setRestrictedMode(data[YT_RESTRICTED_KEY] === true);
+  });
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && KEY in changes) apply(changes[KEY].newValue === true);
+    if (area === 'local') {
+      if (KEY in changes) apply(changes[KEY].newValue === true);
+      if (YT_RESTRICTED_KEY in changes) setRestrictedMode(changes[YT_RESTRICTED_KEY].newValue === true);
+    }
   });
 })();

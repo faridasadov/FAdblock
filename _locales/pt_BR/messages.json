@@ -322,5 +322,17 @@
   },
   "pickerUndo": {
     "message": "Desfazer"
+  },
+  "optionsYtRestrictedLabel": {
+    "message": "Modo restrito do YouTube"
+  },
+  "optionsYtRestrictedHint": {
+    "message": "Ativar o filtro do próprio servidor do YouTube (método mais eficaz)"
+  },
+  "optionsSocialFilterLabel": {
+    "message": "Filtro Reddit · TikTok · Twitter/X"
+  },
+  "optionsSocialFilterHint": {
+    "message": "Ocultar conteúdo 18+ nessas plataformas"
   }
 }

@@ -322,5 +322,17 @@
   },
   "pickerUndo": {
     "message": "Скасувати"
+  },
+  "optionsYtRestrictedLabel": {
+    "message": "Обмежений режим YouTube"
+  },
+  "optionsYtRestrictedHint": {
+    "message": "Активувати власний серверний фільтр YouTube (найефективніший метод)"
+  },
+  "optionsSocialFilterLabel": {
+    "message": "Фільтр Reddit · TikTok · Twitter/X"
+  },
+  "optionsSocialFilterHint": {
+    "message": "Приховати контент 18+ на цих платформах"
   }
 }

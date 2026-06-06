@@ -322,5 +322,17 @@
   },
   "pickerUndo": {
     "message": "Undo"
+  },
+  "optionsYtRestrictedLabel": {
+    "message": "YouTube Restricted Mode"
+  },
+  "optionsYtRestrictedHint": {
+    "message": "Activate YouTube's own server-side content filter (strongest method)"
+  },
+  "optionsSocialFilterLabel": {
+    "message": "Reddit · TikTok · Twitter/X filter"
+  },
+  "optionsSocialFilterHint": {
+    "message": "Hide 18+ content on these platforms"
   }
 }

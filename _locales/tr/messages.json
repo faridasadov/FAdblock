@@ -322,5 +322,17 @@
   },
   "pickerUndo": {
     "message": "Geri al"
+  },
+  "optionsYtRestrictedLabel": {
+    "message": "YouTube Kısıtlı Mod"
+  },
+  "optionsYtRestrictedHint": {
+    "message": "YouTube'un kendi sunucu taraflı filtresini etkinleştir (en güçlü yöntem)"
+  },
+  "optionsSocialFilterLabel": {
+    "message": "Reddit · TikTok · Twitter/X filtresi"
+  },
+  "optionsSocialFilterHint": {
+    "message": "Bu platformlarda 18+ içerikleri gizle"
   }
 }

@@ -322,5 +322,17 @@
   },
   "pickerUndo": {
     "message": "Отменить"
+  },
+  "optionsYtRestrictedLabel": {
+    "message": "YouTube Ограниченный режим"
+  },
+  "optionsYtRestrictedHint": {
+    "message": "Активировать собственный серверный фильтр YouTube (самый надёжный метод)"
+  },
+  "optionsSocialFilterLabel": {
+    "message": "Фильтр Reddit · TikTok · Twitter/X"
+  },
+  "optionsSocialFilterHint": {
+    "message": "Скрыть контент 18+ на этих платформах"
   }
 }

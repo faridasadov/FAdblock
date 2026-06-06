@@ -327,10 +327,24 @@ async function init() {
     $('updateAdultFilter').disabled = false;
   });
 
-  // YouTube filter (stored locally, read by youtube-filter.js content script)
+  // YouTube keyword filter
   $('ytFilterToggle').checked = ytData.youtube_filter_enabled === true;
   $('ytFilterToggle').addEventListener('change', e => {
     chrome.storage.local.set({ youtube_filter_enabled: e.target.checked });
+  });
+
+  // YouTube Restricted Mode
+  const ytRestrictedData = await chrome.storage.local.get('yt_restricted_mode');
+  $('ytRestrictedToggle').checked = ytRestrictedData.yt_restricted_mode === true;
+  $('ytRestrictedToggle').addEventListener('change', e => {
+    chrome.storage.local.set({ yt_restricted_mode: e.target.checked });
+  });
+
+  // Social filter (Reddit, TikTok, Twitter/X)
+  const socialData = await chrome.storage.local.get('social_filter_enabled');
+  $('socialFilterToggle').checked = socialData.social_filter_enabled === true;
+  $('socialFilterToggle').addEventListener('change', e => {
+    chrome.storage.local.set({ social_filter_enabled: e.target.checked });
   });
 
   // Stats & whitelist controls

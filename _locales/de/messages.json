@@ -322,5 +322,17 @@
   },
   "pickerUndo": {
     "message": "Rückgängig"
+  },
+  "optionsYtRestrictedLabel": {
+    "message": "YouTube Eingeschränkter Modus"
+  },
+  "optionsYtRestrictedHint": {
+    "message": "YouTubes eigenen serverseitigen Filter aktivieren (stärkste Methode)"
+  },
+  "optionsSocialFilterLabel": {
+    "message": "Reddit · TikTok · Twitter/X-Filter"
+  },
+  "optionsSocialFilterHint": {
+    "message": "18+-Inhalte auf diesen Plattformen ausblenden"
   }
 }
