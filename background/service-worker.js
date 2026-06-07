@@ -210,6 +210,34 @@ function cleanupSiteRulesObject(siteRules) {
   return next;
 }
 
+function isYouTubeWatchUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (!/(\.|^)youtube\.com$/i.test(parsed.hostname)) return false;
+    return /^\/watch/.test(parsed.pathname) || /^\/shorts\//.test(parsed.pathname) || /^\/live\//.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function rearmYouTubeTabs(options = {}) {
+  const { reload = false } = options;
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({ url: ['*://*.youtube.com/*'] });
+  } catch {
+    tabs = await chrome.tabs.query({});
+  }
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !isYouTubeWatchUrl(tab.url)) continue;
+    if (reload) {
+      chrome.tabs.reload(tab.id).catch(() => {});
+      continue;
+    }
+    chrome.tabs.sendMessage(tab.id, { type: 'FADBLOCK_REARM_YOUTUBE' }).catch(() => {});
+  }
+}
+
 function getRequestLogLabel(ruleId) {
   if (ruleId >= FILTER_RULE_BASE && ruleId < FILTER_RULE_BASE + MAX_FILTER_RULES) return 'dynamic-filter';
   if (ruleId >= ADULT_KW_RULE_BASE && ruleId < ADULT_KW_RULE_BASE + ADULT_KW_PATTERNS.length + 10) return 'adult-keyword';
@@ -304,6 +332,8 @@ async function loadState() {
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const hasFilterRules = existing.some(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES);
   if (_categorySettings.network !== false && !hasFilterRules) fetchAndUpdateFilters().catch(() => {});
+
+  rearmYouTubeTabs({ reload: true }).catch(() => {});
 }
 loadState().catch((error) => {
   console.error('FAdblock loadState failed:', error);
@@ -336,6 +366,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     await syncSiteRecoveryRules();
     await syncBlockingRulesState();
     updateBadgeState(_enabled);
+    rearmYouTubeTabs({ reload: true }).catch(() => {});
 
     chrome.alarms.get('updateFilters', existing => {
       if (!existing) chrome.alarms.create('updateFilters', { periodInMinutes: 10080 });
@@ -866,6 +897,7 @@ async function setCategorySettings(nextSettings, options = {}) {
   }).catch(() => {});
   await syncBlockingRulesState();
   await syncAdultFilterRules();
+  rearmYouTubeTabs({ reload: false }).catch(() => {});
   if (!options.skipHistory && options.label) {
     await pushUserAction(options.label, { [CATEGORY_SETTINGS_KEY]: options.previousState || DEFAULT_CATEGORY_SETTINGS });
   }
@@ -883,6 +915,7 @@ async function setGlobalEnabled(enabled, options = {}) {
   try {
     await syncBlockingRulesState();
   } catch {}
+  rearmYouTubeTabs({ reload: false }).catch(() => {});
 }
 
 // --- Whitelist sync to DNR ---

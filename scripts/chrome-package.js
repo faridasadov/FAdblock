@@ -33,6 +33,46 @@ function prepareChromePackage(rootDir = path.resolve(__dirname, '..')) {
     fs.unlinkSync(path.join(stageDir, 'content', 'youtube-inject.js'));
   } catch {}
 
+  const youtubeRulesPath = path.join(stageDir, 'rules', 'youtube-rules.json');
+  if (fs.existsSync(youtubeRulesPath)) {
+    const rules = JSON.parse(fs.readFileSync(youtubeRulesPath, 'utf8'));
+    if (Array.isArray(rules)) {
+      const extraRules = [
+        {
+          id: 1010,
+          priority: 1,
+          action: { type: 'block' },
+          condition: {
+            regexFilter: '^https?:\\/\\/[^/]*googlevideo\\.com\\/initplayback\\?.*\\boad=[^&]+',
+            resourceTypes: ['xmlhttprequest', 'other']
+          }
+        },
+        {
+          id: 1011,
+          priority: 1,
+          action: { type: 'block' },
+          condition: {
+            regexFilter: '^https?:\\/\\/[^/]*googlevideo\\.com\\/videoplayback\\?.*\\bctier=L.*\\boad=',
+            resourceTypes: ['media', 'xmlhttprequest', 'other']
+          }
+        },
+        {
+          id: 1012,
+          priority: 1,
+          action: { type: 'block' },
+          condition: {
+            regexFilter: '^https?:\\/\\/[^/]*googlevideo\\.com\\/videoplayback\\?.*\\badformat=',
+            resourceTypes: ['media', 'xmlhttprequest', 'other']
+          }
+        }
+      ];
+      for (const rule of extraRules) {
+        if (!rules.some((entry) => entry.id === rule.id)) rules.push(rule);
+      }
+      fs.writeFileSync(youtubeRulesPath, JSON.stringify(rules, null, 2) + '\n');
+    }
+  }
+
   const localesDir = path.join(stageDir, '_locales');
   for (const lang of fs.readdirSync(localesDir)) {
     const msgPath = path.join(localesDir, lang, 'messages.json');

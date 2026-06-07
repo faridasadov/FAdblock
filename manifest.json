@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.0.77",
+  "version": "1.0.79",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "permissions": [
@@ -31,16 +31,6 @@
     "type": "module"
   },
   "content_scripts": [
-    {
-      "matches": [
-        "*://*.youtube.com/*"
-      ],
-      "js": [
-        "content/youtube-firefox-bridge.js"
-      ],
-      "run_at": "document_start",
-      "all_frames": false
-    },
     {
       "matches": [
         "*://*.youtube.com/*"

@@ -19,6 +19,15 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
   manifest.background = {
     scripts: ['background/service-worker.js'],
   };
+  manifest.content_scripts = [
+    {
+      matches: ['*://*.youtube.com/*'],
+      js: ['content/youtube-firefox-bridge.js'],
+      run_at: 'document_start',
+      all_frames: false,
+    },
+    ...(Array.isArray(manifest.content_scripts) ? manifest.content_scripts : []),
+  ];
   if (Array.isArray(manifest.content_scripts)) {
     manifest.content_scripts = manifest.content_scripts
       .filter((entry) => {

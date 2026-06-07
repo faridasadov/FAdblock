@@ -13,16 +13,22 @@
     var isWatchPage = /^\/watch/.test(path) || /^\/shorts\//.test(path) || /^\/live\//.test(path);
     if (!isWatchPage) return;
 
-    var PLAYER_RE = /\/youtubei\/v\d+\/(player|next)\b|\/playlist\?list=|\/watch\?[tv]=|\/get_watch\?/i;
+    var PLAYER_RE = /\/youtubei\/v\d+\/(player|next)\b|\/player(?!.*get_drm_license)|\/playlist\?list=|\/watch\?[tv]=|\/get_watch\?/i;
     var AD_KEYS = new Set([
       'adPlacements',
       'playerAds',
       'adSlots',
       'adBreakHeartbeatParams',
       'adBreaks',
+      'adServingData',
+      'adState',
+      'adTag',
+      'adTagParameters',
       'adSafetyReason',
       'adSignalsInfo',
+      'adTrackingParams',
       'adDisplayConfig',
+      'adMetadata',
       'adRenderers',
       'adInfoRenderer',
       'adParams',
@@ -50,6 +56,7 @@
       'adVideoId',
       'adSlotLoggingData',
       'adPlacementConfig',
+      'companionAds',
       'carouselAdRenderer',
       'displayAd',
       'searchPyvRenderer',
@@ -73,8 +80,16 @@
     function sanitizeString(text) {
       if (typeof text !== 'string') return text;
       return text
-        .replace(/"(adPlacements|adSlots|playerAds)":/g, '"no_ads":')
+        .replace(/"(adPlacements|adSlots|playerAds|adBreaks|adBreakHeartbeatParams|companionAds)":/g, '"no_ads":')
         .replace(/"youThereRenderer":/g, '"no_youThereRenderer":');
+    }
+
+    function sanitizeOutboundText(text) {
+      if (typeof text !== 'string') return text;
+      return text
+        .replace(/"clientScreen":"WATCH"/g, '"clientScreen":"ADUNIT"')
+        .replace(/"clientScreen":"WATCH_WHILE_MINIMIZED"/g, '"clientScreen":"ADUNIT"')
+        .replace(/"isWebNativeShareAvailable":true}}/g, '"isWebNativeShareAvailable":true},"clientScreen":"ADUNIT"}');
     }
 
     function sanitize(value, depth) {
@@ -136,7 +151,9 @@
 
     function cleanJson(text) {
       try {
-        return JSON.stringify(sanitize(JSON.parse(sanitizeString(text))));
+        var parsed = JSON.parse(sanitizeString(text));
+        var cleaned = sanitize(parsed);
+        return JSON.stringify(cleaned);
       } catch (e) {
         return sanitizeString(text);
       }
@@ -157,6 +174,55 @@
           window.ytInitialPlayerResponse = sanitize(window.ytInitialPlayerResponse);
         }
       } catch (e) {}
+      try {
+        if (window.playerResponse) {
+          window.playerResponse = sanitize(window.playerResponse);
+        }
+      } catch (e) {}
+    }
+
+    function hookSanitizedProperty(target, key) {
+      if (!target || typeof target !== 'object') return;
+      var descriptor;
+      try {
+        descriptor = Object.getOwnPropertyDescriptor(target, key);
+      } catch (e) {
+        return;
+      }
+      if (descriptor && descriptor.configurable === false) return;
+
+      var current;
+      try {
+        current = sanitize(target[key]);
+      } catch (e) {
+        current = target[key];
+      }
+
+      try {
+        Object.defineProperty(target, key, {
+          configurable: true,
+          enumerable: descriptor ? descriptor.enumerable !== false : true,
+          get: function () {
+            return current;
+          },
+          set: function (value) {
+            current = sanitize(value);
+          }
+        });
+      } catch (e) {}
+    }
+
+    function patchConfigFlags() {
+      try {
+        if (!window.ytcfg || typeof window.ytcfg !== 'object') return;
+        if (!window.ytcfg.data_ || typeof window.ytcfg.data_ !== 'object') {
+          window.ytcfg.data_ = {};
+        }
+        if (!window.ytcfg.data_.EXPERIMENT_FLAGS || typeof window.ytcfg.data_.EXPERIMENT_FLAGS !== 'object') {
+          window.ytcfg.data_.EXPERIMENT_FLAGS = {};
+        }
+        window.ytcfg.data_.EXPERIMENT_FLAGS.web_streaming_watch = false;
+      } catch (e) {}
     }
 
     try {
@@ -166,6 +232,10 @@
         set: function () {}
       });
     } catch (e) {}
+
+    hookSanitizedProperty(window, 'ytInitialPlayerResponse');
+    hookSanitizedProperty(window, 'playerResponse');
+    patchConfigFlags();
 
     var nativeThen = Promise.prototype.then;
     Promise.prototype.then = new Proxy(nativeThen, {
@@ -206,11 +276,21 @@
       }
     });
 
+    var nativeStringify = JSON.stringify;
+    JSON.stringify = function (value, replacer, space) {
+      var result = nativeStringify.call(JSON, value, replacer, space);
+      return sanitizeOutboundText(result);
+    };
+
     var nativeFetch = typeof window.fetch === 'function' ? window.fetch.bind(window) : null;
     if (nativeFetch) {
       window.fetch = function (input, init) {
         var url = getUrl(input);
-        return nativeFetch(input, init).then(function (response) {
+        var nextInit = init;
+        if (nextInit && typeof nextInit.body === 'string' && PLAYER_RE.test(url)) {
+          nextInit = Object.assign({}, nextInit, { body: sanitizeOutboundText(nextInit.body) });
+        }
+        return nativeFetch(input, nextInit).then(function (response) {
           if (!PLAYER_RE.test(url)) return response;
           return response.text().then(function (text) {
             return new Response(cleanJson(text), {
@@ -232,6 +312,9 @@
       return nativeOpen.apply(this, arguments);
     };
     XMLHttpRequest.prototype.send = function (body) {
+      if (typeof body === 'string' && PLAYER_RE.test(this.__fbYtUrl || '')) {
+        body = sanitizeOutboundText(body);
+      }
       if (PLAYER_RE.test(this.__fbYtUrl || '')) {
         this.addEventListener('readystatechange', function () {
           if (this.readyState !== 4) return;
@@ -246,9 +329,21 @@
     };
 
     patchInitialPlayerResponse();
-    document.addEventListener('yt-navigate-finish', patchInitialPlayerResponse);
+    function rearm() {
+      patchConfigFlags();
+      patchInitialPlayerResponse();
+    }
+    document.addEventListener('yt-navigate-start', rearm);
+    document.addEventListener('yt-navigate-finish', rearm);
+    document.addEventListener('yt-page-data-updated', rearm);
+    window.addEventListener('pageshow', rearm);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') rearm();
+    });
     setTimeout(patchInitialPlayerResponse, 800);
     setTimeout(patchInitialPlayerResponse, 2000);
+    setTimeout(patchConfigFlags, 800);
+    setTimeout(patchConfigFlags, 2000);
     window.__fadblockYoutubeStage = 'ready';
   } catch (error) {
     try {
