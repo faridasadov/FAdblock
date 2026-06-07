@@ -17,28 +17,11 @@ mkdir -p "$CHROME_DEST" "$FIREFOX_DEST" "$FIREFOX_SRC"
 
 # Chrome: stage extension into permanent folder
 echo "→ Preparing Chrome folder..."
-STAGE=$(mktemp -d)
-
-for entry in "$ROOT"/*/; do
-  name=$(basename "$entry")
-  [[ "$name" =~ ^(\.git|node_modules|dist|scripts)$ ]] && continue
-  cp -r "$entry" "$STAGE/"
-done
-for f in "$ROOT"/manifest.json "$ROOT"/README.md; do
-  [ -f "$f" ] && cp "$f" "$STAGE/"
-done
-
-# Remove Firefox-only background.scripts field
-node -e "
-  const p = '$STAGE/manifest.json';
-  const m = JSON.parse(require('fs').readFileSync(p,'utf8'));
-  if (m.background) delete m.background.scripts;
-  require('fs').writeFileSync(p, JSON.stringify(m,null,2)+'\n');
-"
+STAGE=$(node "$ROOT/scripts/chrome-package.js")
 
 rm -rf "${CHROME_DEST:?}"/*
 cp -r "$STAGE/." "$CHROME_DEST/"
-rm -rf "$STAGE"
+rm -rf "$(dirname "$STAGE")"
 echo "  ✓ Chrome: $CHROME_DEST"
 
 # Firefox: stage unpacked/source folder with background.scripts fallback

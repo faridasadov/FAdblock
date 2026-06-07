@@ -4,6 +4,7 @@ const { execSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 const fs   = require('fs');
+const { prepareChromePackage } = require('./chrome-package');
 const { prepareFirefoxPackage } = require('./firefox-package');
 
 const EXT_PATH = path.resolve(__dirname, '..');
@@ -34,9 +35,10 @@ function check(res, label, ok, detail='') {
 async function testChrome() {
   console.log(`\n${HEAD} Chrome\n`);
   const res = [];
+  const chromeSource = prepareChromePackage(EXT_PATH);
   const ctx = await chromium.launchPersistentContext('', {
     headless: false,
-    args:[`--disable-extensions-except=${EXT_PATH}`,`--load-extension=${EXT_PATH}`,'--no-sandbox'],
+    args:[`--disable-extensions-except=${chromeSource}`,`--load-extension=${chromeSource}`,'--no-sandbox'],
     viewport:{width:1280,height:800},
   });
   await new Promise(r=>setTimeout(r,2000));
@@ -96,6 +98,7 @@ async function testFirefox() {
   console.log(`\n${HEAD} Firefox (lint + build + manifest)\n`);
   const res=[];
   const firefoxSource = prepareFirefoxPackage(EXT_PATH);
+  const chromeSource = prepareChromePackage(EXT_PATH);
 
   try{
     const out=execSync(`npx web-ext lint --source-dir ${firefoxSource} 2>&1`,{encoding:'utf8'});
@@ -112,14 +115,17 @@ async function testFirefox() {
   }catch(e){check(res,'web-ext build',false,String(e).slice(0,60));}
 
   const mf=JSON.parse(fs.readFileSync(path.join(firefoxSource,'manifest.json'),'utf8'));
-  check(res,'manifest_version:3',           mf.manifest_version===3);
-  check(res,'background.service_worker',     mf.background?.service_worker==='background/service-worker.js');
+  check(res,'manifest_version:3',            mf.manifest_version===3);
+  check(res,'background.scripts fallback',   Array.isArray(mf.background?.scripts) && mf.background.scripts.includes('background/service-worker.js'));
   check(res,'strict_min_version>=128',       parseFloat(mf.browser_specific_settings?.gecko?.strict_min_version||'0')>=128);
   check(res,'gecko id',                      !!mf.browser_specific_settings?.gecko?.id);
+  check(res,'Firefox MAIN inject çıxarıldı', !mf.content_scripts?.some((entry) => entry.js?.includes('content/youtube-inject.js') || entry.js?.includes('content/youtube-inject-v2.js')));
+  check(res,'Firefox bridge əlavə olunub',   !!mf.content_scripts?.some((entry) => entry.js?.includes('content/youtube-firefox-bridge.js')));
 
   const cs=fs.readFileSync(path.join(EXT_PATH,'content','content.js'),'utf8');
   check(res,'Global state yoxlaması',        cs.includes('adblock_enabled'));
   check(res,'YouTube ruleset mövcuddur',     Array.isArray(mf.declarative_net_request?.rule_resources) && mf.declarative_net_request.rule_resources.some(r => r.id === 'youtube_ads'));
+  check(res,'Firefox bridge Chrome stagingdə yoxdur', !fs.readFileSync(path.join(chromeSource,'manifest.json'),'utf8').includes('youtube-firefox-bridge.js'));
 
   const rules=JSON.parse(fs.readFileSync(path.join(EXT_PATH,'rules','rules.json'),'utf8'));
   check(res,`rules.json ${rules.length} qayda`, rules.length>=90);

@@ -79,14 +79,5 @@
       "urlFilter": "||doubleclick.net^",
       "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "other"]
     }
-  },
-  {
-    "id": 1010,
-    "priority": 1,
-    "action": { "type": "block" },
-    "condition": {
-      "urlFilter": "||googlevideo.com/initplayback?source=youtube&",
-      "resourceTypes": ["xmlhttprequest", "media", "other"]
-    }
   }
 ]

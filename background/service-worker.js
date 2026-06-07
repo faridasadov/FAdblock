@@ -31,9 +31,9 @@ const ADULT_KW_PATTERNS  = [
   '^https?://(www\\.)?xxx',             // hostname starts with "xxx"
 ];
 const ADULT_RULE_BASE    = 50000;
-const ADULT_BATCH_SIZE   = 500;   // domains per DNR rule (requestDomains array)
+const ADULT_BATCH_SIZE   = 40;    // domains per regex-batched DNR rule
 const MAX_ADULT_RULES    = 20000; // max domains stored/blocked
-const MAX_ADULT_BATCHES  = Math.ceil(20000 / 500); // = 40 DNR rules
+const MAX_ADULT_BATCHES  = Math.ceil(20000 / ADULT_BATCH_SIZE);
 const RECOVERY_RULE_BASE = 85000;
 const MAX_RECOVERY_RULES = 500;
 const ADULT_META_KEY     = 'adult_filter_meta';
@@ -163,6 +163,19 @@ function normalizeDomain(raw) {
     .toLowerCase()
     .replace(/^(https?:\/\/)?(www\.)?/, '')
     .replace(/\/.*$/, '');
+}
+
+function escapeRegex(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildHostnameRegex(domains) {
+  const alternatives = domains
+    .map(normalizeDomain)
+    .filter(Boolean)
+    .map(escapeRegex);
+  if (!alternatives.length) return null;
+  return `^https?:\\/\\/([^/?#]+\\.)?(${alternatives.join('|')})([:/?#]|$)`;
 }
 
 function getSiteRule(domain) {
@@ -511,8 +524,9 @@ chrome.webRequest.onBeforeRequest.addListener(
   { urls: AD_URL_FILTERS }
 );
 
-if (chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener) {
-  chrome.declarativeNetRequest.onRuleMatchedDebug.addListener((info) => {
+const dnrDebugEvent = chrome.declarativeNetRequest?.['onRuleMatchedDebug'];
+if (dnrDebugEvent?.addListener) {
+  dnrDebugEvent.addListener((info) => {
     const url = info.request?.url || '';
     let host = '';
     try { host = normalizeDomain(new URL(url).hostname); } catch {}
@@ -755,11 +769,13 @@ async function syncAdultFilterRules() {
   const addRules = [];
   for (let i = 0; i < list.length; i += ADULT_BATCH_SIZE) {
     const batch = list.slice(i, i + ADULT_BATCH_SIZE);
+    const regexFilter = buildHostnameRegex(batch);
+    if (!regexFilter) continue;
     addRules.push({
       id: ADULT_RULE_BASE + Math.floor(i / ADULT_BATCH_SIZE),
       priority: 998,
       action: { type: 'block' },
-      condition: { requestDomains: batch, resourceTypes: allTypes }
+      condition: { regexFilter, isUrlFilterCaseSensitive: false, resourceTypes: allTypes }
     });
   }
 

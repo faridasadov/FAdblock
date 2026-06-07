@@ -17,10 +17,31 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
   const manifestPath = path.join(stageDir, 'manifest.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   manifest.background = {
-    ...manifest.background,
     scripts: ['background/service-worker.js'],
   };
+  if (Array.isArray(manifest.content_scripts)) {
+    manifest.content_scripts = manifest.content_scripts
+      .filter((entry) => {
+        if (!Array.isArray(entry.js)) return true;
+        return !entry.js.includes('content/youtube-inject.js') &&
+          !entry.js.includes('content/youtube-inject-v2.js');
+      })
+      .map((entry) => {
+        const next = { ...entry };
+        delete next.world;
+        return next;
+      });
+  }
+  if (manifest.browser_specific_settings?.gecko) {
+    delete manifest.browser_specific_settings.gecko.data_collection_permissions;
+  }
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+  try {
+    fs.unlinkSync(path.join(stageDir, 'content', 'youtube-inject.js'));
+  } catch {}
+  try {
+    fs.unlinkSync(path.join(stageDir, 'content', 'youtube-inject-v2.js'));
+  } catch {}
 
   const localesDir = path.join(stageDir, '_locales');
   for (const lang of fs.readdirSync(localesDir)) {

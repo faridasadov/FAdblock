@@ -2,7 +2,7 @@
 
 Chrome və Firefox üçün açıq mənbəli, yüngül reklam bloker.
 
-![Version](https://img.shields.io/badge/version-1.0.69-red)
+![Version](https://img.shields.io/badge/version-1.0.77-red)
 ![Manifest](https://img.shields.io/badge/Manifest-V3-blue)
 ![Chrome](https://img.shields.io/badge/Chrome-✓-green)
 ![Firefox](https://img.shields.io/badge/Firefox%20128+-✓-orange)
@@ -61,6 +61,8 @@ Chrome və Firefox üçün açıq mənbəli, yüngül reklam bloker.
 npm install                  # asılılıqları yüklə (hook-u da qurur)
 npm run generate:rules       # rules/rules.json yenilə
 npm run generate:icons       # PNG ikonları yenidən yarat
+npm run stage:chrome         # yalnız Chrome üçün ayrılmış stage qovluğu
+npm run stage:firefox        # yalnız Firefox üçün ayrılmış stage qovluğu
 npm run pack:chrome          # dist/fadblock-chrome.zip
 npm run pack:firefox         # web-ext ilə dist qovluğuna Firefox artifact yaradır
 ```
