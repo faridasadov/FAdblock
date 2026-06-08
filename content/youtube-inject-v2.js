@@ -100,7 +100,7 @@
         var childKey = pair[0];
         var childVal = pair[1];
         if (childKey === 'adBreakHeartbeatParams') {
-          value[childKey] = { heartbeatIntervals: [] };
+          value[childKey] = { heartbeatIntervals: [2147483647] };
           continue;
         }
         if (childKey === 'adBreaks' || childKey === 'adPlacements' || childKey === 'playerAds' || childKey === 'adSlots') {

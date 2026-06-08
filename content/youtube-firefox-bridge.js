@@ -103,7 +103,7 @@
 
         const out = {};
         for (const [key, child] of Object.entries(value)) {
-          if (key === 'adBreakHeartbeatParams') { out[key] = { heartbeatIntervals: [] }; continue; }
+          if (key === 'adBreakHeartbeatParams') { out[key] = { heartbeatIntervals: [2147483647] }; continue; }
           if (key === 'adBreaks' || key === 'adPlacements' || key === 'playerAds' || key === 'adSlots') { out[key] = []; continue; }
           if (AD_KEYS.has(key)) continue;
           out[key] = sanitize(child, depth + 1);
