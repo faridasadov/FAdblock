@@ -15,7 +15,7 @@
       'playerAds',
       'adClientParams',
       'adSlots',
-      'adBreakHeartbeatParams',
+
       'adBreaks',
       'adServingData',
       'adState',
@@ -83,7 +83,7 @@
     function sanitizeString(text) {
       if (typeof text !== 'string') return text;
       return text
-        .replace(/"(adPlacements|adSlots|playerAds|adBreaks|adBreakHeartbeatParams|companionAds)":/g, '"no_ads":')
+        .replace(/"(adPlacements|adSlots|playerAds|adBreaks|companionAds)":/g, '"no_ads":')
         .replace(/"youThereRenderer":/g, '"no_youThereRenderer":');
     }
 
@@ -109,6 +109,10 @@
         var pair = entries[i];
         var childKey = pair[0];
         var childVal = pair[1];
+        if (childKey === 'adBreakHeartbeatParams') {
+          value[childKey] = { heartbeatIntervals: [] };
+          continue;
+        }
         if (AD_KEYS.has(childKey)) {
           try { delete value[childKey]; } catch (e) {}
           continue;

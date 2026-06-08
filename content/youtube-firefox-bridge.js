@@ -29,7 +29,7 @@
         'playerAds',
         'adClientParams',
         'adSlots',
-        'adBreakHeartbeatParams',
+
         'adBreaks',
         'adServingData',
         'adState',
@@ -106,6 +106,7 @@
 
         const out = {};
         for (const [key, child] of Object.entries(value)) {
+          if (key === 'adBreakHeartbeatParams') { out[key] = { heartbeatIntervals: [] }; continue; }
           if (AD_KEYS.has(key)) continue;
           out[key] = sanitize(child, depth + 1);
         }
