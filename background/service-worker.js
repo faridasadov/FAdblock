@@ -29,11 +29,32 @@ const ADULT_KW_PATTERNS  = [
   '^https?://(www\\.)?sex',             // hostname starts with "sex"
   '^https?://[^/?#]*\\.sex\\.',         // ".sex." label in hostname
   '^https?://(www\\.)?xxx',             // hostname starts with "xxx"
+  '^https?://([^./?#:]+\\.)?pornhub\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?xhamster\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?xnxx\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?xvideos\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?redtube\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?youporn\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?tube8\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?spankbang\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?eporner\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?beeg\\.[^./?#:]+([:/?#]|$)',
+  '^https?://[^/?#]*\\bfap[-.]',
+  '^https?://[^/?#]*hentai[^/?#]*',
+  '^https?://[^/?#]*rule34[^/?#]*',
+  '^https?://[^/?#]*onlyfans[^/?#]*',
+  '^https?://[^/?#]*camgirl[^/?#]*',
+  '^https?://[^/?#]*fetish[^/?#]*',
+  '^https?://[^/?#]*milf[^/?#]*',
+  '^https?://[^/?#]*nsfw[^/?#]*',
+  '^https?://[^/?#]*nude[^/?#]*',
+  '^https?://[^/?#]*erotic[^/?#]*',
 ];
 const ADULT_RULE_BASE    = 50000;
-const ADULT_BATCH_SIZE   = 40;    // domains per regex-batched DNR rule
-const MAX_ADULT_RULES    = 20000; // max domains stored/blocked
-const MAX_ADULT_BATCHES  = Math.ceil(20000 / ADULT_BATCH_SIZE);
+const ADULT_BATCH_SIZE   = 60;    // soft cap; real batching is regex-size aware
+const MAX_ADULT_RULES    = 50000; // max domains stored/blocked
+const MAX_ADULT_BATCHES  = 5000;
+const MAX_ADULT_REGEX_LENGTH = 900; // conservative ceiling; compiled DNR regexes can exceed source length
 const RECOVERY_RULE_BASE = 85000;
 const MAX_RECOVERY_RULES = 500;
 const ADULT_META_KEY     = 'adult_filter_meta';
@@ -59,6 +80,7 @@ const DEFAULT_CATEGORY_SETTINGS = {
 const ADULT_DOMAINS_FALLBACK = [
   // Global
   'pornhub.com','xvideos.com','xnxx.com','xhamster.com','redtube.com',
+  'pornhub.org','pornhub.net','xhamster.de','xhamster2.com','xhamster18.com',
   'youporn.com','tube8.com','spankbang.com','eporner.com','beeg.com',
   'hclips.com','drtuber.com','tnaflix.com','porn.com','sex.com',
   'brazzers.com','realitykings.com','naughtyamerica.com','bangbros.com',
@@ -176,6 +198,49 @@ function buildHostnameRegex(domains) {
     .map(escapeRegex);
   if (!alternatives.length) return null;
   return `^https?:\\/\\/([^/?#]+\\.)?(${alternatives.join('|')})([:/?#]|$)`;
+}
+
+function chunkDomainsForHostnameRegex(domains, maxRegexLength = MAX_ADULT_REGEX_LENGTH) {
+  const cleaned = domains
+    .map(normalizeDomain)
+    .filter(Boolean);
+  const chunks = [];
+  let current = [];
+
+  for (const domain of cleaned) {
+    const next = current.concat(domain);
+    const regex = buildHostnameRegex(next);
+    if (!regex) continue;
+
+    if (regex.length <= maxRegexLength) {
+      current = next;
+      continue;
+    }
+
+    if (current.length) {
+      chunks.push(current);
+      current = [domain];
+      continue;
+    }
+
+    // Single overlong domain: skip it here; keyword/core rules still cover major sites.
+    current = [];
+  }
+
+  if (current.length) chunks.push(current);
+  return chunks;
+}
+
+function isSafeRegexFilter(regexFilter) {
+  if (!regexFilter || typeof regexFilter !== 'string') return false;
+  if (regexFilter.length > MAX_ADULT_REGEX_LENGTH) return false;
+  try {
+    // DNR regex syntax is close enough to JS RegExp for a coarse validation pass.
+    new RegExp(regexFilter, 'i');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getSiteRule(domain) {
@@ -324,7 +389,7 @@ async function loadState() {
   // Restore DNR rules after browser restart using final merged state
   await syncWhitelistRules([..._whitelist]);
   await syncCustomBlockedRules(data[CUSTOM_BLOCKED_KEY] || []);
-  await syncAdultFilterRules();
+  await syncAdultFilterRulesSafe();
   await syncSiteRecoveryRules();
   await syncBlockingRulesState();
 
@@ -687,19 +752,54 @@ const BON_APPETIT_META = 'https://raw.githubusercontent.com/Bon-Appetit/porn-dom
 const BON_APPETIT_BASE = 'https://raw.githubusercontent.com/Bon-Appetit/porn-domains/main/';
 const STEVEN_BLACK_URL = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts';
 
+function isPriorityAdultDomain(domain) {
+  return /\.(ru|ua|by|kz|uz|xxx|adult|porn|sex)$/.test(domain) ||
+    /porno|porn|sex|xxx|nude|hentai|erotic|milf|fetish|onlyfan|camgirl|adult/.test(domain);
+}
+
+function mergeAdultDomains(...lists) {
+  const seen = new Set();
+  const priority = [];
+  const rest = [];
+
+  for (const domain of ADULT_DOMAINS_FALLBACK) {
+    const clean = normalizeDomain(domain);
+    if (!clean || seen.has(clean)) continue;
+    seen.add(clean);
+    priority.push(clean);
+  }
+
+  for (const list of lists) {
+    for (const rawDomain of list || []) {
+      const clean = normalizeDomain(rawDomain);
+      if (!clean || !clean.includes('.') || seen.has(clean)) continue;
+      seen.add(clean);
+      if (isPriorityAdultDomain(clean)) priority.push(clean);
+      else rest.push(clean);
+      if (priority.length + rest.length >= MAX_ADULT_RULES) {
+        return [...priority, ...rest].slice(0, MAX_ADULT_RULES);
+      }
+    }
+  }
+
+  return [...priority, ...rest].slice(0, MAX_ADULT_RULES);
+}
+
 async function fetchAndUpdateAdultRules() {
   try {
-    // Primary: Bon-Appetit (642K+ domains, 4700+ .ru domains, plain domain-per-line format)
-    let domains = await _fetchBonAppetit();
-    // Fallback to StevenBlack if Bon-Appetit fails
-    if (!domains.length) domains = await _fetchStevenBlack();
+    // Combine multiple large sources instead of treating them as mutual fallbacks.
+    const [bonAppetit, stevenBlack] = await Promise.all([
+      _fetchBonAppetit(),
+      _fetchStevenBlack(),
+    ]);
+    const domains = mergeAdultDomains(bonAppetit, stevenBlack);
     if (!domains.length) return;
 
     await chrome.storage.local.set({
       [ADULT_DOMAINS_KEY]: domains,
       [ADULT_META_KEY]: { updated: new Date().toISOString(), count: domains.length }
     });
-    if (_adultFilterEnabled) await syncAdultFilterRules();
+    if (_adultFilterEnabled) await syncAdultFilterRulesSafe();
   } catch {}
 }
 
@@ -715,24 +815,16 @@ async function _fetchBonAppetit() {
     if (!res.ok) return [];
     const text = await res.text();
 
-    const seen = new Set(ADULT_DOMAINS_FALLBACK);
-    const priority = [...ADULT_DOMAINS_FALLBACK]; // fallback always first
-    const rest = [];
+    const domains = [];
 
     for (const line of text.split('\n')) {
       const domain = line.trim().toLowerCase();
       if (!domain || domain.startsWith('#') || !domain.includes('.')) continue;
       const clean = domain.startsWith('www.') ? domain.slice(4) : domain;
-      if (seen.has(clean)) continue;
-      seen.add(clean);
-      // Prioritise by TLD or by keyword in domain name
-      const isPriorityTld = /\.(ru|ua|by|kz|uz|xxx|adult|porn|sex)$/.test(clean);
-      const isPriorityKw  = /porno|porn|sex|xxx|nude|hentai|erotic|milf|fetish|onlyfan|camgirl|adult/.test(clean);
-      if (isPriorityTld || isPriorityKw) priority.push(clean);
-      else rest.push(clean);
+      domains.push(clean);
     }
 
-    return [...priority, ...rest].slice(0, MAX_ADULT_RULES);
+    return domains;
   } catch { return []; }
 }
 
@@ -741,17 +833,15 @@ async function _fetchStevenBlack() {
     const res = await fetch(STEVEN_BLACK_URL, { cache: 'no-store' });
     if (!res.ok) return [];
     const text = await res.text();
-    const seen = new Set(ADULT_DOMAINS_FALLBACK);
-    const domains = [...ADULT_DOMAINS_FALLBACK];
+    const domains = [];
     for (const line of text.split('\n')) {
-      if (domains.length >= MAX_ADULT_RULES) break;
       if (line.startsWith('#') || !line.trim()) continue;
       const parts = line.trim().split(/\s+/);
       if (parts.length < 2) continue;
       let domain = parts[1].toLowerCase();
       if (!domain.includes('.') || domain === '0.0.0.0') continue;
       if (domain.startsWith('www.')) domain = domain.slice(4);
-      if (!seen.has(domain)) { seen.add(domain); domains.push(domain); }
+      domains.push(domain);
     }
     return domains;
   } catch { return []; }
@@ -769,12 +859,14 @@ async function syncAdultKeywordRules() {
     return;
   }
 
-  const addRules = ADULT_KW_PATTERNS.map((regexFilter, i) => ({
-    id: ADULT_KW_RULE_BASE + i,
-    priority: 999,
-    action: { type: 'block' },
-    condition: { regexFilter, isUrlFilterCaseSensitive: false, resourceTypes: allTypes }
-  }));
+  const addRules = ADULT_KW_PATTERNS
+    .filter((regexFilter) => isSafeRegexFilter(regexFilter))
+    .map((regexFilter, i) => ({
+      id: ADULT_KW_RULE_BASE + i,
+      priority: 999,
+      action: { type: 'block' },
+      condition: { regexFilter, isUrlFilterCaseSensitive: false, resourceTypes: allTypes }
+    }));
 
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules });
 }
@@ -798,12 +890,12 @@ async function syncAdultFilterRules() {
     .slice(0, MAX_ADULT_RULES);
 
   const addRules = [];
-  for (let i = 0; i < list.length; i += ADULT_BATCH_SIZE) {
-    const batch = list.slice(i, i + ADULT_BATCH_SIZE);
-    const regexFilter = buildHostnameRegex(batch);
-    if (!regexFilter) continue;
+  const domainChunks = chunkDomainsForHostnameRegex(list);
+  for (let i = 0; i < domainChunks.length && i < MAX_ADULT_BATCHES; i += 1) {
+    const regexFilter = buildHostnameRegex(domainChunks[i]);
+    if (!isSafeRegexFilter(regexFilter)) continue;
     addRules.push({
-      id: ADULT_RULE_BASE + Math.floor(i / ADULT_BATCH_SIZE),
+      id: ADULT_RULE_BASE + i,
       priority: 998,
       action: { type: 'block' },
       condition: { regexFilter, isUrlFilterCaseSensitive: false, resourceTypes: allTypes }
@@ -811,6 +903,33 @@ async function syncAdultFilterRules() {
   }
 
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldIds, addRules });
+}
+
+async function syncAdultFilterRulesSafe() {
+  try {
+    await syncAdultFilterRules();
+    return;
+  } catch (error) {
+    console.warn('FAdblock adult filter full sync failed, retrying with fallback list:', error);
+  }
+
+  try {
+    const current = await chrome.storage.local.get(ADULT_DOMAINS_KEY);
+    const previousDomains = current[ADULT_DOMAINS_KEY];
+    const fallbackDomains = ADULT_DOMAINS_FALLBACK.slice(0, 500);
+    await chrome.storage.local.set({ [ADULT_DOMAINS_KEY]: fallbackDomains });
+    try {
+      await syncAdultFilterRules();
+    } finally {
+      if (Array.isArray(previousDomains) && previousDomains.length) {
+        await chrome.storage.local.set({ [ADULT_DOMAINS_KEY]: previousDomains });
+      } else {
+        await chrome.storage.local.remove(ADULT_DOMAINS_KEY);
+      }
+    }
+  } catch (retryError) {
+    console.error('FAdblock adult filter fallback sync failed:', retryError);
+  }
 }
 
 async function syncSiteRecoveryRules() {
@@ -862,7 +981,7 @@ async function syncBlockingRulesState() {
   }
 
   if (!filterIds.length) fetchAndUpdateFilters().catch(() => {});
-  syncAdultFilterRules().catch(() => {});
+  syncAdultFilterRulesSafe().catch(() => {});
   chrome.storage.local.get(CUSTOM_BLOCKED_KEY).then(d => {
     syncCustomBlockedRules(d[CUSTOM_BLOCKED_KEY] || []).catch(() => {});
   });
@@ -896,7 +1015,7 @@ async function setCategorySettings(nextSettings, options = {}) {
     [ADULT_FILTER_KEY]: _adultFilterEnabled,
   }).catch(() => {});
   await syncBlockingRulesState();
-  await syncAdultFilterRules();
+  await syncAdultFilterRulesSafe();
   rearmYouTubeTabs({ reload: false }).catch(() => {});
   if (!options.skipHistory && options.label) {
     await pushUserAction(options.label, { [CATEGORY_SETTINGS_KEY]: options.previousState || DEFAULT_CATEGORY_SETTINGS });
