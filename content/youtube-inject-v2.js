@@ -9,14 +9,11 @@
     window.__fadblockYoutubePruneActive = true;
     window.__fadblockYoutubeStage = 'init';
 
-    var path = location.pathname || '';
-    var isWatchPage = /^\/watch/.test(path) || /^\/shorts\//.test(path) || /^\/live\//.test(path);
-    if (!isWatchPage) return;
-
     var PLAYER_RE = /\/youtubei\/v\d+\/(player|next)\b|\/player(?!.*get_drm_license)|\/playlist\?list=|\/watch\?[tv]=|\/get_watch\?/i;
     var AD_KEYS = new Set([
       'adPlacements',
       'playerAds',
+      'adClientParams',
       'adSlots',
       'adBreakHeartbeatParams',
       'adBreaks',
@@ -77,19 +74,17 @@
       return !!value && typeof value === 'object' && !Array.isArray(value);
     }
 
+    function isAdObject(value) {
+      if (!isObject(value)) return false;
+      var keys = Object.keys(value);
+      return keys.length > 0 && keys.every(function (k) { return AD_KEYS.has(k); });
+    }
+
     function sanitizeString(text) {
       if (typeof text !== 'string') return text;
       return text
         .replace(/"(adPlacements|adSlots|playerAds|adBreaks|adBreakHeartbeatParams|companionAds)":/g, '"no_ads":')
         .replace(/"youThereRenderer":/g, '"no_youThereRenderer":');
-    }
-
-    function sanitizeOutboundText(text) {
-      if (typeof text !== 'string') return text;
-      return text
-        .replace(/"clientScreen":"WATCH"/g, '"clientScreen":"ADUNIT"')
-        .replace(/"clientScreen":"WATCH_WHILE_MINIMIZED"/g, '"clientScreen":"ADUNIT"')
-        .replace(/"isWebNativeShareAvailable":true}}/g, '"isWebNativeShareAvailable":true},"clientScreen":"ADUNIT"}');
     }
 
     function sanitize(value, depth) {
@@ -98,6 +93,7 @@
 
       if (Array.isArray(value)) {
         return value
+          .filter(function (item) { return !isAdObject(item); })
           .map(function (item) { return sanitize(item, depth + 1); })
           .filter(function (item) { return item !== undefined; });
       }
@@ -124,6 +120,14 @@
         value.entries = value.entries.filter(function (entry) {
           return !entry?.command?.reelWatchEndpoint?.adClientParams?.isAd;
         });
+      }
+
+      if (value.adClientParams?.isAd) {
+        return undefined;
+      }
+
+      if (value.command?.reelWatchEndpoint?.adClientParams?.isAd) {
+        return undefined;
       }
 
       if (value.messages?.[0]?.youThereRenderer) {
@@ -212,19 +216,6 @@
       } catch (e) {}
     }
 
-    function patchConfigFlags() {
-      try {
-        if (!window.ytcfg || typeof window.ytcfg !== 'object') return;
-        if (!window.ytcfg.data_ || typeof window.ytcfg.data_ !== 'object') {
-          window.ytcfg.data_ = {};
-        }
-        if (!window.ytcfg.data_.EXPERIMENT_FLAGS || typeof window.ytcfg.data_.EXPERIMENT_FLAGS !== 'object') {
-          window.ytcfg.data_.EXPERIMENT_FLAGS = {};
-        }
-        window.ytcfg.data_.EXPERIMENT_FLAGS.web_streaming_watch = false;
-      } catch (e) {}
-    }
-
     try {
       Object.defineProperty(window, 'google_ad_status', {
         configurable: true,
@@ -235,71 +226,22 @@
 
     hookSanitizedProperty(window, 'ytInitialPlayerResponse');
     hookSanitizedProperty(window, 'playerResponse');
-    patchConfigFlags();
-
-    var nativeThen = Promise.prototype.then;
-    Promise.prototype.then = new Proxy(nativeThen, {
-      apply: function (target, thisArg, args) {
-        var onFulfilled = args[0];
-        var onRejected = args[1];
-
-        if (typeof onFulfilled === 'function') {
-          var source = '';
-          try { source = Function.prototype.toString.call(onFulfilled); } catch (e) {}
-
-          if (source.includes('onAbnormalityDetected')) {
-            args[0] = function () {};
-          } else if (source.includes('.next(')) {
-            args[0] = function (value) {
-              if (typeof value?.value === 'string') value.value = sanitizeString(value.value);
-              return onFulfilled.call(this, value);
-            };
-          } else if (source.includes('jspbResponseCtor')) {
-            args[0] = function (value) {
-              return onFulfilled.call(this, sanitize(value));
-            };
-          } else {
-            args[0] = function (value) {
-              if (value && typeof value === 'object') return onFulfilled.call(this, sanitize(value));
-              return onFulfilled.call(this, value);
-            };
-          }
-        }
-
-        if (typeof onRejected === 'function') {
-          args[1] = function (error) {
-            return onRejected.call(this, error);
-          };
-        }
-
-        return Reflect.apply(target, thisArg, args);
-      }
-    });
-
-    var nativeStringify = JSON.stringify;
-    JSON.stringify = function (value, replacer, space) {
-      var result = nativeStringify.call(JSON, value, replacer, space);
-      return sanitizeOutboundText(result);
-    };
 
     var nativeFetch = typeof window.fetch === 'function' ? window.fetch.bind(window) : null;
     if (nativeFetch) {
       window.fetch = function (input, init) {
         var url = getUrl(input);
-        var nextInit = init;
-        if (nextInit && typeof nextInit.body === 'string' && PLAYER_RE.test(url)) {
-          nextInit = Object.assign({}, nextInit, { body: sanitizeOutboundText(nextInit.body) });
-        }
-        return nativeFetch(input, nextInit).then(function (response) {
+        return nativeFetch(input, init).then(function (response) {
           if (!PLAYER_RE.test(url)) return response;
+          var clone = response.clone();
           return response.text().then(function (text) {
             return new Response(cleanJson(text), {
-              status: response.status,
-              statusText: response.statusText,
-              headers: response.headers
+              status: clone.status,
+              statusText: clone.statusText,
+              headers: clone.headers
             });
           }).catch(function () {
-            return response;
+            return clone;
           });
         });
       };
@@ -312,9 +254,6 @@
       return nativeOpen.apply(this, arguments);
     };
     XMLHttpRequest.prototype.send = function (body) {
-      if (typeof body === 'string' && PLAYER_RE.test(this.__fbYtUrl || '')) {
-        body = sanitizeOutboundText(body);
-      }
       if (PLAYER_RE.test(this.__fbYtUrl || '')) {
         this.addEventListener('readystatechange', function () {
           if (this.readyState !== 4) return;
@@ -329,21 +268,9 @@
     };
 
     patchInitialPlayerResponse();
-    function rearm() {
-      patchConfigFlags();
-      patchInitialPlayerResponse();
-    }
-    document.addEventListener('yt-navigate-start', rearm);
-    document.addEventListener('yt-navigate-finish', rearm);
-    document.addEventListener('yt-page-data-updated', rearm);
-    window.addEventListener('pageshow', rearm);
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible') rearm();
-    });
+    document.addEventListener('yt-navigate-finish', patchInitialPlayerResponse);
     setTimeout(patchInitialPlayerResponse, 800);
     setTimeout(patchInitialPlayerResponse, 2000);
-    setTimeout(patchConfigFlags, 800);
-    setTimeout(patchConfigFlags, 2000);
     window.__fadblockYoutubeStage = 'ready';
   } catch (error) {
     try {

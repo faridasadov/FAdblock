@@ -39,6 +39,9 @@ const ADULT_KW_PATTERNS  = [
   '^https?://([^./?#:]+\\.)?spankbang\\.[^./?#:]+([:/?#]|$)',
   '^https?://([^./?#:]+\\.)?eporner\\.[^./?#:]+([:/?#]|$)',
   '^https?://([^./?#:]+\\.)?beeg\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?toppornsites\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?yaeby\\.[^./?#:]+([:/?#]|$)',
+  '^https?://([^./?#:]+\\.)?tarfehalshaml\\.[^./?#:]+([:/?#]|$)',
   '^https?://[^/?#]*\\bfap[-.]',
   '^https?://[^/?#]*hentai[^/?#]*',
   '^https?://[^/?#]*rule34[^/?#]*',
@@ -49,12 +52,11 @@ const ADULT_KW_PATTERNS  = [
   '^https?://[^/?#]*nsfw[^/?#]*',
   '^https?://[^/?#]*nude[^/?#]*',
   '^https?://[^/?#]*erotic[^/?#]*',
+  '^https?://[^?#]*/[^?#]*(?:porno|porn|hentai|rule34|nsfw|camgirl|fap|erotic|fetish|milf)[^?#]*([?#/]|$)',
 ];
 const ADULT_RULE_BASE    = 50000;
-const ADULT_BATCH_SIZE   = 60;    // soft cap; real batching is regex-size aware
-const MAX_ADULT_RULES    = 50000; // max domains stored/blocked
-const MAX_ADULT_BATCHES  = 5000;
-const MAX_ADULT_REGEX_LENGTH = 900; // conservative ceiling; compiled DNR regexes can exceed source length
+const MAX_ADULT_RULES    = 50000; // max domains stored in cache
+const MAX_ADULT_DOMAIN_RULES = 900; // DNR cap: 5000 total limit − 4000 filter rules − ~100 others
 const RECOVERY_RULE_BASE = 85000;
 const MAX_RECOVERY_RULES = 500;
 const ADULT_META_KEY     = 'adult_filter_meta';
@@ -81,6 +83,8 @@ const ADULT_DOMAINS_FALLBACK = [
   // Global
   'pornhub.com','xvideos.com','xnxx.com','xhamster.com','redtube.com',
   'pornhub.org','pornhub.net','xhamster.de','xhamster2.com','xhamster18.com',
+  'toppornsites.com',
+  'yaeby.pro','tarfehalshaml.net',
   'youporn.com','tube8.com','spankbang.com','eporner.com','beeg.com',
   'hclips.com','drtuber.com','tnaflix.com','porn.com','sex.com',
   'brazzers.com','realitykings.com','naughtyamerica.com','bangbros.com',
@@ -187,62 +191,6 @@ function normalizeDomain(raw) {
     .replace(/\/.*$/, '');
 }
 
-function escapeRegex(text) {
-  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function buildHostnameRegex(domains) {
-  const alternatives = domains
-    .map(normalizeDomain)
-    .filter(Boolean)
-    .map(escapeRegex);
-  if (!alternatives.length) return null;
-  return `^https?:\\/\\/([^/?#]+\\.)?(${alternatives.join('|')})([:/?#]|$)`;
-}
-
-function chunkDomainsForHostnameRegex(domains, maxRegexLength = MAX_ADULT_REGEX_LENGTH) {
-  const cleaned = domains
-    .map(normalizeDomain)
-    .filter(Boolean);
-  const chunks = [];
-  let current = [];
-
-  for (const domain of cleaned) {
-    const next = current.concat(domain);
-    const regex = buildHostnameRegex(next);
-    if (!regex) continue;
-
-    if (regex.length <= maxRegexLength) {
-      current = next;
-      continue;
-    }
-
-    if (current.length) {
-      chunks.push(current);
-      current = [domain];
-      continue;
-    }
-
-    // Single overlong domain: skip it here; keyword/core rules still cover major sites.
-    current = [];
-  }
-
-  if (current.length) chunks.push(current);
-  return chunks;
-}
-
-function isSafeRegexFilter(regexFilter) {
-  if (!regexFilter || typeof regexFilter !== 'string') return false;
-  if (regexFilter.length > MAX_ADULT_REGEX_LENGTH) return false;
-  try {
-    // DNR regex syntax is close enough to JS RegExp for a coarse validation pass.
-    new RegExp(regexFilter, 'i');
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function getSiteRule(domain) {
   return _siteRules[normalizeDomain(domain)] || null;
 }
@@ -306,7 +254,7 @@ async function rearmYouTubeTabs(options = {}) {
 function getRequestLogLabel(ruleId) {
   if (ruleId >= FILTER_RULE_BASE && ruleId < FILTER_RULE_BASE + MAX_FILTER_RULES) return 'dynamic-filter';
   if (ruleId >= ADULT_KW_RULE_BASE && ruleId < ADULT_KW_RULE_BASE + ADULT_KW_PATTERNS.length + 10) return 'adult-keyword';
-  if (ruleId >= ADULT_RULE_BASE && ruleId < ADULT_RULE_BASE + MAX_ADULT_BATCHES) return 'adult-filter';
+  if (ruleId >= ADULT_RULE_BASE && ruleId < ADULT_RULE_BASE + MAX_ADULT_DOMAIN_RULES) return 'adult-filter';
   if (ruleId >= 70000 && ruleId < 80000) return 'custom-block';
   if (ruleId >= RECOVERY_RULE_BASE && ruleId < RECOVERY_RULE_BASE + MAX_RECOVERY_RULES) return 'site-recovery';
   if (ruleId >= 90000 && ruleId < 100000) return 'whitelist';
@@ -860,7 +808,6 @@ async function syncAdultKeywordRules() {
   }
 
   const addRules = ADULT_KW_PATTERNS
-    .filter((regexFilter) => isSafeRegexFilter(regexFilter))
     .map((regexFilter, i) => ({
       id: ADULT_KW_RULE_BASE + i,
       priority: 999,
@@ -877,7 +824,7 @@ async function syncAdultFilterRules() {
   const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const oldIds   = existing
-    .filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_BATCHES)
+    .filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_DOMAIN_RULES)
     .map(r => r.id);
 
   if (!_adultFilterEnabled) {
@@ -887,18 +834,17 @@ async function syncAdultFilterRules() {
 
   const data = await chrome.storage.local.get(ADULT_DOMAINS_KEY);
   const list = (data[ADULT_DOMAINS_KEY]?.length ? data[ADULT_DOMAINS_KEY] : ADULT_DOMAINS_FALLBACK)
-    .slice(0, MAX_ADULT_RULES);
+    .slice(0, MAX_ADULT_DOMAIN_RULES);
 
   const addRules = [];
-  const domainChunks = chunkDomainsForHostnameRegex(list);
-  for (let i = 0; i < domainChunks.length && i < MAX_ADULT_BATCHES; i += 1) {
-    const regexFilter = buildHostnameRegex(domainChunks[i]);
-    if (!isSafeRegexFilter(regexFilter)) continue;
+  for (let i = 0; i < list.length; i += 1) {
+    const domain = normalizeDomain(list[i]);
+    if (!domain) continue;
     addRules.push({
       id: ADULT_RULE_BASE + i,
       priority: 998,
       action: { type: 'block' },
-      condition: { regexFilter, isUrlFilterCaseSensitive: false, resourceTypes: allTypes }
+      condition: { urlFilter: `||${domain}^`, resourceTypes: allTypes }
     });
   }
 
@@ -916,7 +862,7 @@ async function syncAdultFilterRulesSafe() {
   try {
     const current = await chrome.storage.local.get(ADULT_DOMAINS_KEY);
     const previousDomains = current[ADULT_DOMAINS_KEY];
-    const fallbackDomains = ADULT_DOMAINS_FALLBACK.slice(0, 500);
+    const fallbackDomains = ADULT_DOMAINS_FALLBACK.slice(0, Math.min(500, MAX_ADULT_DOMAIN_RULES));
     await chrome.storage.local.set({ [ADULT_DOMAINS_KEY]: fallbackDomains });
     try {
       await syncAdultFilterRules();
@@ -956,7 +902,7 @@ async function syncBlockingRulesState() {
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const filterIds  = existing.filter(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES).map(r => r.id);
   const adultKwIds = existing.filter(r => r.id >= ADULT_KW_RULE_BASE && r.id < ADULT_KW_RULE_BASE + ADULT_KW_PATTERNS.length + 10).map(r => r.id);
-  const adultIds   = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_BATCHES).map(r => r.id);
+  const adultIds   = existing.filter(r => r.id >= ADULT_RULE_BASE && r.id < ADULT_RULE_BASE + MAX_ADULT_DOMAIN_RULES).map(r => r.id);
   const customIds  = existing.filter(r => r.id >= 70000 && r.id < 80000).map(r => r.id);
 
   await chrome.declarativeNetRequest.updateEnabledRulesets(

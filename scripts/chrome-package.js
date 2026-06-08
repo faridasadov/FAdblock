@@ -52,7 +52,7 @@ function prepareChromePackage(rootDir = path.resolve(__dirname, '..')) {
           priority: 1,
           action: { type: 'block' },
           condition: {
-            regexFilter: '^https?:\\/\\/[^/]*googlevideo\\.com\\/videoplayback\\?.*\\bctier=L.*\\boad=',
+            regexFilter: '^https?:\\/\\/[^/]*googlevideo\\.com\\/videoplayback\\?.*\\boad=[^&]+',
             resourceTypes: ['media', 'xmlhttprequest', 'other']
           }
         },
@@ -63,6 +63,24 @@ function prepareChromePackage(rootDir = path.resolve(__dirname, '..')) {
           condition: {
             regexFilter: '^https?:\\/\\/[^/]*googlevideo\\.com\\/videoplayback\\?.*\\badformat=',
             resourceTypes: ['media', 'xmlhttprequest', 'other']
+          }
+        },
+        {
+          id: 1013,
+          priority: 1,
+          action: { type: 'block' },
+          condition: {
+            regexFilter: '^https?:\\/\\/[^/]*googlevideo\\.com\\/videoplayback\\?.*\\bctier=[A-Z].*\\bcmo=',
+            resourceTypes: ['media', 'xmlhttprequest', 'other']
+          }
+        },
+        {
+          id: 1014,
+          priority: 1,
+          action: { type: 'block' },
+          condition: {
+            regexFilter: '^https?:\\/\\/[^/]*youtube\\.com\\/api\\/stats\\/ads\\b',
+            resourceTypes: ['xmlhttprequest', 'other']
           }
         }
       ];
