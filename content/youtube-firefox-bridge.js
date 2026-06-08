@@ -25,10 +25,7 @@
 
       const PLAYER_RE = /\\/youtubei\\/v\\d+\\/(player|next)\\b|\\/player(?!.*get_drm_license)|\\/playlist\\?list=|\\/watch\\?[tv]=|\\/get_watch\\?/i;
       const AD_KEYS = new Set([
-        'adPlacements',
-        'playerAds',
         'adClientParams',
-        'adSlots',
 
         'adBreaks',
         'adServingData',
@@ -107,6 +104,7 @@
         const out = {};
         for (const [key, child] of Object.entries(value)) {
           if (key === 'adBreakHeartbeatParams') { out[key] = { heartbeatIntervals: [] }; continue; }
+          if (key === 'adBreaks' || key === 'adPlacements' || key === 'playerAds' || key === 'adSlots') { out[key] = []; continue; }
           if (AD_KEYS.has(key)) continue;
           out[key] = sanitize(child, depth + 1);
         }
@@ -137,7 +135,11 @@
         return out;
       }
 
+      const AD_FAST_KEYS = ['"adPlacements"', '"playerAds"', '"adSlots"', '"adBreaks"',
+        '"enforcementMessageRenderer"', '"adBlockerMessageRenderer"', '"adBreakHeartbeatParams"'];
+
       function cleanJson(text) {
+        if (!AD_FAST_KEYS.some((k) => text.includes(k))) return text;
         try {
           return JSON.stringify(sanitize(JSON.parse(text)));
         } catch (e) {

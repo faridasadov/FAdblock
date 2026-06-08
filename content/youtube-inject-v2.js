@@ -11,12 +11,8 @@
 
     var PLAYER_RE = /\/youtubei\/v\d+\/(player|next)\b|\/player(?!.*get_drm_license)|\/playlist\?list=|\/watch\?[tv]=|\/get_watch\?/i;
     var AD_KEYS = new Set([
-      'adPlacements',
-      'playerAds',
       'adClientParams',
-      'adSlots',
 
-      'adBreaks',
       'adServingData',
       'adState',
       'adTag',
@@ -80,11 +76,11 @@
       return keys.length > 0 && keys.every(function (k) { return AD_KEYS.has(k); });
     }
 
+    var STUB_EMPTY_ARRAY = Object.freeze([]);
+
     function sanitizeString(text) {
       if (typeof text !== 'string') return text;
-      return text
-        .replace(/"(adPlacements|adSlots|playerAds|adBreaks|companionAds)":/g, '"no_ads":')
-        .replace(/"youThereRenderer":/g, '"no_youThereRenderer":');
+      return text.replace(/"youThereRenderer":/g, '"no_youThereRenderer":');
     }
 
     function sanitize(value, depth) {
@@ -98,12 +94,6 @@
           .filter(function (item) { return item !== undefined; });
       }
 
-      for (var key of AD_KEYS) {
-        if (Object.prototype.hasOwnProperty.call(value, key)) {
-          try { delete value[key]; } catch (e) {}
-        }
-      }
-
       var entries = Object.entries(value);
       for (var i = 0; i < entries.length; i += 1) {
         var pair = entries[i];
@@ -111,6 +101,10 @@
         var childVal = pair[1];
         if (childKey === 'adBreakHeartbeatParams') {
           value[childKey] = { heartbeatIntervals: [] };
+          continue;
+        }
+        if (childKey === 'adBreaks' || childKey === 'adPlacements' || childKey === 'playerAds' || childKey === 'adSlots') {
+          value[childKey] = STUB_EMPTY_ARRAY;
           continue;
         }
         if (AD_KEYS.has(childKey)) {
@@ -157,7 +151,15 @@
       return value;
     }
 
+    var AD_FAST_KEYS = ['"adPlacements"', '"playerAds"', '"adSlots"', '"adBreaks"',
+      '"enforcementMessageRenderer"', '"adBlockerMessageRenderer"', '"adBreakHeartbeatParams"'];
+
     function cleanJson(text) {
+      var hasAds = false;
+      for (var fi = 0; fi < AD_FAST_KEYS.length; fi += 1) {
+        if (text.indexOf(AD_FAST_KEYS[fi]) !== -1) { hasAds = true; break; }
+      }
+      if (!hasAds) return text;
       try {
         var parsed = JSON.parse(sanitizeString(text));
         var cleaned = sanitize(parsed);
