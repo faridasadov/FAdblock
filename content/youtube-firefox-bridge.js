@@ -4,14 +4,6 @@
   if (!/firefox/i.test(navigator.userAgent)) return;
   if (!location.hostname.endsWith('youtube.com')) return;
 
-  const path = location.pathname;
-  const isWatchPage =
-    /^\/watch/.test(path) ||
-    /^\/shorts\//.test(path) ||
-    /^\/live\//.test(path);
-
-  if (!isWatchPage) return;
-
   function shouldInject() {
     return new Promise((resolve) => {
       chrome.storage.local.get(['adblock_enabled', 'category_settings'], (data) => {
@@ -31,14 +23,23 @@
       if (window.__fadblockFirefoxBridgeActive) return;
       window.__fadblockFirefoxBridgeActive = true;
 
-      const PLAYER_RE = /\\/youtubei\\/v\\d+\\/(player|next)\\b/i;
+      const PLAYER_RE = /\\/youtubei\\/v\\d+\\/(player|next)\\b|\\/player(?!.*get_drm_license)|\\/playlist\\?list=|\\/watch\\?[tv]=|\\/get_watch\\?/i;
       const AD_KEYS = new Set([
         'adPlacements',
         'playerAds',
+        'adClientParams',
         'adSlots',
         'adBreakHeartbeatParams',
         'adBreaks',
+        'adServingData',
+        'adState',
+        'adTag',
+        'adTagParameters',
+        'adSafetyReason',
         'adSignalsInfo',
+        'adTrackingParams',
+        'adDisplayConfig',
+        'adMetadata',
         'adRenderers',
         'adInfoRenderer',
         'adParams',
@@ -49,37 +50,56 @@
         'promotedVideoRenderer',
         'promotedSkippableVideoRenderer',
         'promotedProductRenderer',
+        'sponsorshipsRenderer',
         'paidContentOverlayRenderer',
+        'campaign',
         'adBlockerMessageRenderer',
         'enforcementMessageRenderer',
         'enforcementEntity',
+        'adBlockerMessage',
         'adBreakServiceSettings',
+        'adAttribution',
         'instreamVideoAdRenderer',
         'linearAdSequenceRenderer',
         'adDurationRemaining',
+        'adBreakService',
+        'adLayoutServiceSettings',
         'adVideoId',
+        'adSlotLoggingData',
         'adPlacementConfig',
+        'companionAds',
         'carouselAdRenderer',
         'displayAd',
         'searchPyvRenderer',
         'promotedSpotlightVideoRenderer',
+        'adHoverTextButtonRenderer',
         'adBadgeRenderer',
         'ads',
         'adUnitRenderer',
+        'adTextImageButtonRenderer',
+        'adActionInterstitialRenderer',
         'fullscreenAdRenderer',
         'invideoOverlayAdRenderer',
-        'mastHeadAdRenderer'
+        'mastHeadAdRenderer',
+        'brightcoveAdRenderer'
       ]);
 
       function isObject(value) {
         return !!value && typeof value === 'object' && !Array.isArray(value);
       }
 
+      function isAdObject(value) {
+        if (!isObject(value)) return false;
+        const keys = Object.keys(value);
+        return keys.length > 0 && keys.every((k) => AD_KEYS.has(k));
+      }
+
       function sanitize(value, depth = 0) {
-        if (depth > 20 || value === null || typeof value !== 'object') return value;
+        if (depth > 16 || value === null || typeof value !== 'object') return value;
 
         if (Array.isArray(value)) {
           return value
+            .filter((item) => !isAdObject(item))
             .map((item) => sanitize(item, depth + 1))
             .filter((item) => item !== undefined);
         }
@@ -110,6 +130,9 @@
           try { delete out.messages[0].youThereRenderer; } catch (e) {}
         }
 
+        if (out.adClientParams?.isAd) return undefined;
+        if (out.command?.reelWatchEndpoint?.adClientParams?.isAd) return undefined;
+
         return out;
       }
 
@@ -136,6 +159,11 @@
             window.ytInitialPlayerResponse = sanitize(window.ytInitialPlayerResponse);
           }
         } catch (e) {}
+        try {
+          if (window.playerResponse) {
+            window.playerResponse = sanitize(window.playerResponse);
+          }
+        } catch (e) {}
       }
 
       try {
@@ -150,16 +178,16 @@
       if (nativeFetch) {
         window.fetch = function (input, init) {
           const url = getUrl(input);
-          if (!PLAYER_RE.test(url)) return nativeFetch(input, init);
           return nativeFetch(input, init).then((response) => {
-            const source = response.clone();
-            return source.text().then((text) => {
+            if (!PLAYER_RE.test(url)) return response;
+            const clone = response.clone();
+            return response.text().then((text) => {
               return new Response(cleanJson(text), {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers
+                status: clone.status,
+                statusText: clone.statusText,
+                headers: clone.headers
               });
-            }).catch(() => response);
+            }).catch(() => clone);
           });
         };
       }
