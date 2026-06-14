@@ -9,7 +9,21 @@
     window.__fadblockYoutubePruneActive = true;
     window.__fadblockYoutubeStage = 'init';
 
+    function FAD_LOG(event, data) {
+      var entry = { t: Date.now(), ev: event, world: 'MAIN', d: data || {} };
+      console.log('[FAD]', event, data || '');
+      try {
+        var logs = JSON.parse(sessionStorage.getItem('fadblock_log') || '[]');
+        logs.push(entry);
+        if (logs.length > 1000) logs = logs.slice(-1000);
+        sessionStorage.setItem('fadblock_log', JSON.stringify(logs));
+      } catch (e) {}
+    }
+
+    FAD_LOG('inject_start', { url: location.href });
+
     var PLAYER_RE = /\/youtubei\/v\d+\/(player|next)\b|\/player(?!.*get_drm_license)|\/playlist\?list=|\/watch\?[tv]=|\/get_watch\?/i;
+    var AD_CHECK_RE = /googleads\.g\.doubleclick\.net|\/pagead\/(id|aclk|interaction)|\/api\/stats\/ads/i;
     var AD_KEYS = new Set([
       'adClientParams',
 
@@ -76,11 +90,37 @@
       return keys.length > 0 && keys.every(function (k) { return AD_KEYS.has(k); });
     }
 
-    var STUB_EMPTY_ARRAY = Object.freeze([]);
-
     function sanitizeString(text) {
       if (typeof text !== 'string') return text;
       return text.replace(/"youThereRenderer":/g, '"no_youThereRenderer":');
+    }
+
+    var cachedStreamingData = null;
+
+    function getExpireFromUrl(url) {
+      if (typeof url !== 'string') return null;
+      var m = url.match(/[?&]expire=(\d+)/);
+      return m ? parseInt(m[1], 10) : null;
+    }
+
+    function hasValidStreamingUrls(sd) {
+      var nowSec = Date.now() / 1000;
+      var formats = (sd.formats || []).concat(sd.adaptiveFormats || []);
+      for (var i = 0; i < formats.length; i++) {
+        var exp = getExpireFromUrl(formats[i].url);
+        if (exp !== null && exp > nowSec + 60) return true;
+      }
+      return false;
+    }
+
+    function isStreamingDataExpired(sd) {
+      var nowSec = Date.now() / 1000;
+      var formats = (sd.formats || []).concat(sd.adaptiveFormats || []);
+      for (var i = 0; i < formats.length; i++) {
+        var exp = getExpireFromUrl(formats[i].url);
+        if (exp !== null && exp < nowSec) return true;
+      }
+      return false;
     }
 
     function sanitize(value, depth) {
@@ -100,11 +140,11 @@
         var childKey = pair[0];
         var childVal = pair[1];
         if (childKey === 'adBreakHeartbeatParams') {
-          value[childKey] = { heartbeatIntervals: [2147483647] };
+          try { delete value[childKey]; } catch (e) {}
           continue;
         }
         if (childKey === 'adBreaks' || childKey === 'adPlacements' || childKey === 'playerAds' || childKey === 'adSlots') {
-          value[childKey] = STUB_EMPTY_ARRAY;
+          value[childKey] = [];
           continue;
         }
         if (AD_KEYS.has(childKey)) {
@@ -141,6 +181,7 @@
           !!errorScreen.adBlockerMessageRenderer ||
           /adblock|ad block|disable.+ad blocker|allow youtube ads/i.test(reason);
         if (isAdblockEnforcement) {
+          FAD_LOG('playability_fixed', { reason: reason, had_enforcement_screen: !!errorScreen.enforcementMessageRenderer });
           value.playabilityStatus = {
             status: 'OK',
             playableInEmbed: true
@@ -159,9 +200,18 @@
       for (var fi = 0; fi < AD_FAST_KEYS.length; fi += 1) {
         if (text.indexOf(AD_FAST_KEYS[fi]) !== -1) { hasAds = true; break; }
       }
-      if (!hasAds) return text;
+      var hasStreamingData = text.indexOf('"streamingData"') !== -1;
+      if (!hasAds && !hasStreamingData) return text;
       try {
         var parsed = JSON.parse(sanitizeString(text));
+        if (parsed.streamingData) {
+          if (hasValidStreamingUrls(parsed.streamingData)) {
+            try { cachedStreamingData = JSON.parse(JSON.stringify(parsed.streamingData)); } catch (e) {}
+          } else if (cachedStreamingData && isStreamingDataExpired(parsed.streamingData)) {
+            parsed.streamingData = cachedStreamingData;
+          }
+        }
+        if (!hasAds) return JSON.stringify(parsed);
         var cleaned = sanitize(parsed);
         return JSON.stringify(cleaned);
       } catch (e) {
@@ -237,8 +287,13 @@
     if (nativeFetch) {
       window.fetch = function (input, init) {
         var url = getUrl(input);
+        if (AD_CHECK_RE.test(url)) {
+          FAD_LOG('fetch_adcheck_blocked', { url: url });
+          return Promise.resolve(new Response('{}', { status: 200 }));
+        }
         return nativeFetch(input, init).then(function (response) {
           if (!PLAYER_RE.test(url)) return response;
+          FAD_LOG('fetch_player_intercepted', { url: url });
           var clone = response.clone();
           return response.text().then(function (text) {
             return new Response(cleanJson(text), {
@@ -260,13 +315,24 @@
       return nativeOpen.apply(this, arguments);
     };
     XMLHttpRequest.prototype.send = function (body) {
-      if (PLAYER_RE.test(this.__fbYtUrl || '')) {
+      var fbUrl = this.__fbYtUrl || '';
+      if (PLAYER_RE.test(fbUrl)) {
+        FAD_LOG('xhr_player_intercepted', { url: fbUrl });
         this.addEventListener('readystatechange', function () {
           if (this.readyState !== 4) return;
           try {
             var cleaned = cleanJson(this.responseText);
             Object.defineProperty(this, 'responseText', { configurable: true, value: cleaned });
             Object.defineProperty(this, 'response', { configurable: true, value: cleaned });
+          } catch (e) {}
+        });
+      } else if (AD_CHECK_RE.test(fbUrl)) {
+        FAD_LOG('xhr_adcheck_blocked', { url: fbUrl });
+        this.addEventListener('readystatechange', function () {
+          if (this.readyState !== 4) return;
+          try {
+            Object.defineProperty(this, 'responseText', { configurable: true, value: '{}' });
+            Object.defineProperty(this, 'response', { configurable: true, value: '{}' });
           } catch (e) {}
         });
       }
@@ -278,6 +344,72 @@
     setTimeout(patchInitialPlayerResponse, 800);
     setTimeout(patchInitialPlayerResponse, 2000);
     window.__fadblockYoutubeStage = 'ready';
+    FAD_LOG('inject_ready', { fetch_patched: !!nativeFetch });
+
+    // Block same-video navigations triggered by ad enforcement
+    (function () {
+      function isSameVideoUrl(url) {
+        if (typeof url !== 'string') return false;
+        try {
+          var cv = new URLSearchParams(location.search).get('v');
+          if (!cv) return false;
+          var target = new URL(url, location.href);
+          return target.pathname === '/watch' && target.searchParams.get('v') === cv;
+        } catch (e) { return false; }
+      }
+
+      function markBlocked(type) {
+        FAD_LOG('nav_blocked', { type: type, url: location.href });
+        try { sessionStorage.setItem('fadblock_blocked', type + ':' + Date.now()); } catch (e) {}
+      }
+
+      try {
+        var locProto = Object.getPrototypeOf(location);
+        var hd = Object.getOwnPropertyDescriptor(locProto, 'href');
+        if (hd && hd.configurable && hd.set) {
+          var origHrefSet = hd.set;
+          Object.defineProperty(locProto, 'href', {
+            configurable: true,
+            get: hd.get,
+            set: function (v) {
+              if (isSameVideoUrl(v)) { markBlocked('href'); return; }
+              return origHrefSet.call(this, v);
+            }
+          });
+        }
+      } catch (e) {}
+
+      try {
+        var origAssign = Location.prototype.assign;
+        Location.prototype.assign = function (url) {
+          if (isSameVideoUrl(url)) { markBlocked('assign'); return; }
+          return origAssign.call(this, url);
+        };
+        var origReplace = Location.prototype.replace;
+        Location.prototype.replace = function (url) {
+          if (isSameVideoUrl(url)) { markBlocked('replace'); return; }
+          return origReplace.call(this, url);
+        };
+      } catch (e) {}
+
+      document.addEventListener('yt-navigate-start', function (e) {
+        try {
+          var d = e.detail;
+          if (d && d.pageData && d.pageData.watchEndpoint) {
+            var cv = new URLSearchParams(location.search).get('v');
+            if (cv && d.pageData.watchEndpoint.videoId === cv) {
+              markBlocked('yt-navigate');
+              e.stopImmediatePropagation();
+              e.preventDefault();
+            }
+          }
+        } catch (ex) {}
+      }, true);
+
+      window.addEventListener('beforeunload', function () {
+        try { sessionStorage.setItem('fadblock_unload', Date.now().toString()); } catch (e) {}
+      });
+    })();
   } catch (error) {
     try {
       window.__fadblockYoutubeError = String(error && error.stack || error);

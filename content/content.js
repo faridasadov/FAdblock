@@ -1,6 +1,28 @@
 (function () {
   'use strict';
 
+  function fadLog(event, data) {
+    const entry = { t: Date.now(), ev: event, world: 'ISOLATED', d: data || {} };
+    console.log('[FAD]', event, data || '');
+    try {
+      const logs = JSON.parse(sessionStorage.getItem('fadblock_log') || '[]');
+      logs.push(entry);
+      if (logs.length > 1000) logs = logs.slice(-1000);
+      sessionStorage.setItem('fadblock_log', JSON.stringify(logs));
+    } catch (e) {}
+  }
+
+  // Reload diagnostic: log what happened before the last page reload
+  try {
+    var _un = sessionStorage.getItem('fadblock_unload');
+    var _bl = sessionStorage.getItem('fadblock_blocked');
+    if (_un || _bl) {
+      fadLog('reload_detected', { unload_at: _un ? new Date(+_un).toISOString() : null, blocked: _bl });
+      sessionStorage.removeItem('fadblock_unload');
+      sessionStorage.removeItem('fadblock_blocked');
+    }
+  } catch (e) {}
+
   const STYLE_ID = '__adblock_pro_css__';
   const YT_STYLE_ID = '__fadblock_youtube_css__';
   const CUSTOM_STYLE_ID = '__adblock_custom_css__';
@@ -332,6 +354,9 @@
       watchFlexy?.removeAttribute?.('player-unavailable');
 
       const player = document.querySelector('#movie_player, .html5-video-player');
+      const hadAdInterrupting = player?.classList?.contains('ad-interrupting');
+      const hadUnstarted = player?.classList?.contains('unstarted-mode');
+      const hadError = !!document.querySelector('.ytp-error');
       player?.classList?.remove('unstarted-mode');
       player?.classList?.remove('buffering-mode');
       player?.classList?.remove('ad-interrupting');
@@ -339,7 +364,20 @@
 
       const playButton = document.querySelector('.ytp-play-button');
       const video = document.querySelector('#movie_player video, .html5-video-player video');
-      if (!IS_FIREFOX && video?.paused) {
+      const hadEnforcement = hadAdInterrupting || hadUnstarted || hadError || !!watchFlexy ||
+        directMatches.length > 0;
+      if (hadEnforcement) {
+        fadLog('enforcement_cleared', {
+          directMatches: directMatches.length,
+          hadAdInterrupting,
+          hadUnstarted,
+          hadError,
+          hadWatchFlexy: !!watchFlexy,
+          videoPaused: !!video?.paused,
+        });
+      }
+      if (!IS_FIREFOX && video?.paused && hadEnforcement) {
+        fadLog('video_play_triggered', {});
         playButton?.click?.();
         video.play?.().catch?.(() => {});
       }
