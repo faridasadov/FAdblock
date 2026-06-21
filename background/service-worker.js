@@ -448,6 +448,22 @@ chrome.alarms.onAlarm.addListener(alarm => {
   }
 });
 
+// CIS / Russian ad network domains not covered by generic lists
+const CIS_AD_DOMAINS = [
+  // Yandex Advertising
+  'an.yandex.ru', 'yabs.yandex.ru', 'adfox.ru', 'adfox.net',
+  // Mail.ru / MyTarget
+  'ad.mail.ru', 'top.mail.ru', 'targetmailru.com',
+  // Russian ad networks
+  'adriver.ru', 'actionads.ru', 'begun.ru', 'sape.ru',
+  'noatom.ru', 'soloway.ru', 'advmaker.ru', 'medialand.ru',
+  'directadvert.ru', 'tns-counter.ru',
+  // Rambler / RBC
+  'ad.rambler.ru', 'cnt.rbc.ru', 'ad.rbc.ru',
+  // VK / OK.ru ads
+  'ads.ok.ru', 'ads.vk.com', 'vkadcorp.com',
+];
+
 async function fetchAndUpdateFilters() {
   try {
     const res = await fetch(
@@ -456,10 +472,16 @@ async function fetchAndUpdateFilters() {
     );
     if (!res.ok) return;
     const text = await res.text();
-    const domains = text.split('\n')
+    const fetched = text.split('\n')
       .map(l => l.trim().toLowerCase())
-      .filter(l => l && !l.startsWith('#') && l.includes('.') && !l.includes(' '))
-      .slice(0, MAX_FILTER_RULES);
+      .filter(l => l && !l.startsWith('#') && l.includes('.') && !l.includes(' '));
+
+    // CIS domains first — guaranteed slots; then fetched list (deduped)
+    const seen = new Set(CIS_AD_DOMAINS);
+    const domains = [
+      ...CIS_AD_DOMAINS,
+      ...fetched.filter(d => !seen.has(d)),
+    ].slice(0, MAX_FILTER_RULES);
 
     const allTypes = ['main_frame','sub_frame','script','stylesheet','image','font','xmlhttprequest','media','websocket','other'];
     const existing = await chrome.declarativeNetRequest.getDynamicRules();
