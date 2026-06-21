@@ -26,6 +26,10 @@ const ADULT_KW_PATTERNS  = [
   '^https?://[^/?#]+\\.adult([/?#]|$)', // *.adult TLD
   '^https?://[^/?#]+\\.porn([/?#]|$)',  // *.porn TLD
   '^https?://[^/?#]*porno',             // "porno" anywhere in hostname
+  '^https?://[^/?#]*trah',             // "trah*" in hostname (vtrahe, trahnuli, trah.tv)
+  '^https?://[^/?#]*trach',            // "trach*" in hostname (trachtube)
+  '^https?://[^/?#]*erotik',           // "erotik*" in hostname (erotika.ru — CIS spelling)
+  '^https?://[^/?#]*seks[^ei]',        // "seks" in hostname — avoids "seksi" (Indonesian legit)
   '^https?://(www\\.)?sex',             // hostname starts with "sex"
   '^https?://[^/?#]*\\.sex\\.',         // ".sex." label in hostname
   '^https?://(www\\.)?xxx',             // hostname starts with "xxx"
@@ -100,6 +104,8 @@ const ADULT_DOMAINS_FALLBACK = [
   'porno365.ru','sexfilmi.ru','porno-go.ru','pussyspace.com',
   'pussyspace.net','trahnuli.com','nashe-porno.ru','seks-video.ru',
   '2porno365.run','sex-studentki.live','sex-studentki.ru',
+  // Additional domains reported by users
+  'bysex.net','strip2.co','vtrahe.work',
 ];
 
 function t(key, substitutions) {
