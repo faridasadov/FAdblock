@@ -164,6 +164,19 @@ async function init() {
   animateCount($('todayCount'), stats?.today || 0);
   animateCount($('totalCount'), stats?.total || 0);
 
+  // Real-time stats update via storage changes
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (changes['adblock_stats']) {
+      const s = changes['adblock_stats'].newValue || {};
+      $('todayCount').textContent = formatNumber(s.today || 0);
+      $('totalCount').textContent = formatNumber(s.total || 0);
+    }
+    if (tab?.id && changes[`tab_${tab.id}`]) {
+      $('tabCount').textContent = formatNumber(changes[`tab_${tab.id}`].newValue || 0);
+    }
+  });
+
   $('brokenSiteBtn').addEventListener('click', async () => {
     if (!currentDomain) return;
     const res = await chrome.runtime.sendMessage({ type: 'REPORT_BROKEN_SITE', domain: currentDomain, minutes: 60 });
@@ -185,23 +198,30 @@ async function init() {
   $('donateBtn').addEventListener('click', () => chrome.tabs.create({ url: PAYPAL_URL }));
 
   $('exportLogsBtn').addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return;
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        const raw = sessionStorage.getItem('fadblock_log') || '[]';
-        return { logs: JSON.parse(raw), url: location.href, ua: navigator.userAgent };
-      },
-    });
-    const data = result?.result || { logs: [], url: tab.url };
+    const [tab, debugRes] = await Promise.all([
+      chrome.tabs.query({ active: true, currentWindow: true }).then(([t]) => t),
+      chrome.runtime.sendMessage({ type: 'GET_DEBUG_LOG' }),
+    ]);
+    const data = {
+      exported_at: new Date().toISOString(),
+      url: tab?.url || '',
+      tab_title: tab?.title || '',
+      user_agent: navigator.userAgent,
+      logs: debugRes?.list || [],
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    await chrome.downloads.download({ url, filename: `fadblock-log-${ts}.json`, saveAs: false });
-    URL.revokeObjectURL(url);
+    await chrome.downloads.download({ url, filename: `fadblock-debug-log-${ts}.json`, saveAs: true });
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
     $('exportLogsBtn').textContent = '✓ Saved to Downloads!';
-    setTimeout(() => { $('exportLogsBtn').textContent = '⬇ Export Debug Logs'; }, 2000);
+    setTimeout(() => { $('exportLogsBtn').textContent = '⬇ Export Logs'; }, 2000);
+  });
+
+  $('clearLogsBtn').addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({ type: 'CLEAR_DEBUG_LOG' });
+    $('clearLogsBtn').textContent = '✓ Cleared';
+    setTimeout(() => { $('clearLogsBtn').textContent = '✕ Clear Logs'; }, 2000);
   });
 
   $('pickBtn').addEventListener('click', async () => {
