@@ -9,9 +9,13 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
 
   fs.mkdirSync(stageDir, { recursive: true });
 
-  for (const entry of fs.readdirSync(rootDir)) {
-    if (['.git', 'node_modules', 'dist'].includes(entry)) continue;
-    fs.cpSync(path.join(rootDir, entry), path.join(stageDir, entry), { recursive: true });
+  // Only copy extension files — exclude dev scripts, build tools, hooks, etc.
+  const EXTENSION_ENTRIES = ['manifest.json', 'background', 'content', 'icons', 'popup', 'rules', '_locales'];
+  for (const entry of EXTENSION_ENTRIES) {
+    const src = path.join(rootDir, entry);
+    if (fs.existsSync(src)) {
+      fs.cpSync(src, path.join(stageDir, entry), { recursive: true });
+    }
   }
 
   const manifestPath = path.join(stageDir, 'manifest.json');
@@ -33,7 +37,8 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
       .filter((entry) => {
         if (!Array.isArray(entry.js)) return true;
         return !entry.js.includes('content/youtube-inject.js') &&
-          !entry.js.includes('content/youtube-inject-v2.js');
+          !entry.js.includes('content/youtube-inject-v2.js') &&
+          !entry.js.includes('content/youtube-filter.js');
       })
       .map((entry) => {
         const next = { ...entry };
@@ -41,9 +46,13 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
         return next;
       });
   }
-  if (manifest.browser_specific_settings?.gecko) {
-    delete manifest.browser_specific_settings.gecko.data_collection_permissions;
-  }
+  if (!manifest.browser_specific_settings) manifest.browser_specific_settings = {};
+  if (!manifest.browser_specific_settings.gecko) manifest.browser_specific_settings.gecko = {};
+  // Required by AMO for new Firefox extensions
+  manifest.browser_specific_settings.gecko.data_collection_permissions = {
+    required: ['none'],
+    optional: [],
+  };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
   try {
     fs.unlinkSync(path.join(stageDir, 'content', 'youtube-inject.js'));
@@ -51,6 +60,37 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
   try {
     fs.unlinkSync(path.join(stageDir, 'content', 'youtube-inject-v2.js'));
   } catch {}
+
+  const rulesPath = path.join(stageDir, 'rules', 'rules.json');
+  if (fs.existsSync(rulesPath)) {
+    const rules = JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
+    let nextRuleId = Math.max(0, ...rules.map((rule) => Number(rule?.id) || 0)) + 1;
+    const allowRules = [
+      '^https://googleads\\.g\\.doubleclick\\.net/pagead/id(?:[/?#]|$)',
+      '^https://static\\.doubleclick\\.net/instream/ad_status\\.js(?:[?#].*)?$',
+      '^https://www\\.google\\.[^/]+/pagead/lvz(?:[/?#]|$)',
+    ];
+    for (const regexFilter of allowRules) {
+      rules.unshift({
+        id: nextRuleId++,
+        priority: 10000,
+        action: { type: 'allow' },
+        condition: {
+          regexFilter,
+          initiatorDomains: ['youtube.com', 'www.youtube.com', 'm.youtube.com'],
+          resourceTypes: ['xmlhttprequest', 'script', 'other'],
+        },
+      });
+    }
+    fs.writeFileSync(rulesPath, JSON.stringify(rules, null, 2) + '\n');
+  }
+
+  if (Array.isArray(manifest.declarative_net_request?.rule_resources)) {
+    manifest.declarative_net_request.rule_resources = manifest.declarative_net_request.rule_resources
+      .filter((resource) => resource?.id !== 'youtube_ads')
+      .map((resource) => ({ ...resource }));
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+  }
 
   const localesDir = path.join(stageDir, '_locales');
   for (const lang of fs.readdirSync(localesDir)) {

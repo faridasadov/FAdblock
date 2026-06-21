@@ -2,13 +2,19 @@
   'use strict';
 
   function fadLog(event, data) {
-    const entry = { t: Date.now(), ev: event, world: 'ISOLATED', d: data || {} };
+    const entry = { t: Date.now(), ev: event, world: 'ISOLATED', d: data || {}, url: location.href };
     console.log('[FAD]', event, data || '');
     try {
       const logs = JSON.parse(sessionStorage.getItem('fadblock_log') || '[]');
       logs.push(entry);
       if (logs.length > 1000) logs = logs.slice(-1000);
       sessionStorage.setItem('fadblock_log', JSON.stringify(logs));
+    } catch (e) {}
+    try {
+      fetch('http://localhost:4317/fadblock-log', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ exported_at: new Date().toISOString(), logs: [{ source: 'isolated', event, data: data || {}, url: location.href, at: new Date().toISOString() }] }),
+      }).catch(() => {});
     } catch (e) {}
   }
 
@@ -259,7 +265,21 @@
       visibilityHandler: null,
       scheduled: false,
       timer: null,
+      currentUrl: '',
+      clearCount: 0,
+      lastClearAt: 0,
     });
+    function resetClearState() {
+      shared.currentUrl = location.href;
+      shared.clearCount = 0;
+      shared.lastClearAt = 0;
+    }
+
+    function ensureClearState() {
+      if (shared.currentUrl !== location.href) {
+        resetClearState();
+      }
+    }
     function injectYouTubeCSS() {
       if (document.getElementById(YT_STYLE_ID)) return;
       const style = document.createElement('style');
@@ -304,6 +324,7 @@
     function clearYouTubeEnforcement() {
       injectYouTubeCSS();
       if (!isYouTubeWatchPage()) return;
+      ensureClearState();
 
       const directMatches = document.querySelectorAll([
         'ytd-enforcement-message-view-model',
@@ -318,10 +339,7 @@
           el.remove?.();
           return;
         }
-        el.setAttribute?.('hidden', 'hidden');
-        el.style?.setProperty('display', 'none', 'important');
-        el.style?.setProperty('visibility', 'hidden', 'important');
-        el.style?.setProperty('pointer-events', 'none', 'important');
+        el.remove?.();
       });
 
       const containers = document.querySelectorAll([
@@ -334,10 +352,14 @@
             !el.querySelector?.('ytd-enforcement-message-view-model, yt-playability-error-supported-renderers')) {
           return;
         }
-        el.setAttribute?.('hidden', 'hidden');
-        el.style?.setProperty('display', 'none', 'important');
-        el.style?.setProperty('visibility', 'hidden', 'important');
-        el.style?.setProperty('pointer-events', 'none', 'important');
+        if (!IS_FIREFOX) {
+          el.setAttribute?.('hidden', 'hidden');
+          el.style?.setProperty('display', 'none', 'important');
+          el.style?.setProperty('visibility', 'hidden', 'important');
+          el.style?.setProperty('pointer-events', 'none', 'important');
+          return;
+        }
+        el.remove?.();
       });
 
       if (!IS_FIREFOX) {
@@ -366,6 +388,16 @@
       const video = document.querySelector('#movie_player video, .html5-video-player video');
       const hadEnforcement = hadAdInterrupting || hadUnstarted || hadError || !!watchFlexy ||
         directMatches.length > 0;
+      if (!hadEnforcement) return;
+
+      const now = Date.now();
+      const maxClearCount = IS_FIREFOX ? 1 : 4;
+      if (shared.clearCount >= maxClearCount && (now - shared.lastClearAt) < 15000) {
+        return;
+      }
+      shared.clearCount += 1;
+      shared.lastClearAt = now;
+
       if (hadEnforcement) {
         fadLog('enforcement_cleared', {
           directMatches: directMatches.length,
@@ -380,6 +412,36 @@
         fadLog('video_play_triggered', {});
         playButton?.click?.();
         video.play?.().catch?.(() => {});
+      }
+      // On Firefox, only trigger playback recovery when an actual enforcement overlay
+      // was found and removed (directMatches.length > 0). Triggering on hadUnstarted
+      // alone causes a cascade: loadVideoById resets player → unstarted again → loop.
+      // On Firefox, only recover playback when an actual enforcement overlay was found
+      // (directMatches.length > 0). Using loadVideoById forces a fresh fetch that our
+      // MAIN-world interceptor catches and fixes (UNPLAYABLE→OK). playVideo() alone
+      // fails when the player's internal state is UNPLAYABLE.
+      if (IS_FIREFOX && directMatches.length > 0) {
+        setTimeout(() => {
+          try {
+            const player = document.getElementById('movie_player');
+            const playerPw = player?.wrappedJSObject || player;
+            const pw = window.wrappedJSObject;
+            fadLog('ff_play_state', { scriptInjected: !!pw?.__fadblockPlayerFix, paused: !!video?.paused });
+            const videoId = new URLSearchParams(location.search).get('v');
+            if (videoId && typeof playerPw?.loadVideoById === 'function') {
+              playerPw.loadVideoById(videoId);
+              fadLog('ff_play_triggered', { method: 'loadVideoById', videoId });
+            } else if (typeof playerPw?.playVideo === 'function') {
+              playerPw.playVideo();
+              fadLog('ff_play_triggered', { method: 'playVideo' });
+            } else if (video?.paused) {
+              video.play?.()?.catch?.(() => {});
+              fadLog('ff_play_triggered', { method: 'video.play' });
+            }
+          } catch (e) {
+            fadLog('ff_play_error', { err: String(e).slice(0, 120) });
+          }
+        }, 200);
       }
 
       document.body?.style?.removeProperty('overflow');
@@ -396,17 +458,18 @@
     }
 
     injectYouTubeCSS();
+    resetClearState();
     scheduleClear();
     if (!shared.timer) {
       let ticks = 0;
       shared.timer = setInterval(() => {
         ticks += 1;
         clearYouTubeEnforcement();
-        if (ticks >= 240 || !isYouTubeWatchPage() || !effectiveYouTubeBypassEnabled()) {
+        if (ticks >= 40 || !isYouTubeWatchPage() || !effectiveYouTubeBypassEnabled()) {
           clearInterval(shared.timer);
           shared.timer = null;
         }
-      }, 250);
+      }, 500);
     }
     shared.observer?.disconnect();
     shared.observer = new MutationObserver((mutations) => {
@@ -426,6 +489,7 @@
     shared.observer.observe(document.documentElement, { childList: true, subtree: true });
     if (!shared.navHandler) {
       shared.navHandler = () => {
+        resetClearState();
         if (isYouTubeWatchPage() && effectiveYouTubeBypassEnabled()) scheduleClear();
         else teardownYouTubeOverlayCleanup();
       };
@@ -433,18 +497,21 @@
     }
     if (!shared.navStartHandler) {
       shared.navStartHandler = () => {
+        resetClearState();
         if (isYouTubeWatchPage() && effectiveYouTubeBypassEnabled()) scheduleClear();
       };
       document.addEventListener('yt-navigate-start', shared.navStartHandler);
     }
     if (!shared.pageDataHandler) {
       shared.pageDataHandler = () => {
+        resetClearState();
         if (isYouTubeWatchPage() && effectiveYouTubeBypassEnabled()) scheduleClear();
       };
       document.addEventListener('yt-page-data-updated', shared.pageDataHandler);
     }
     if (!shared.pageShowHandler) {
       shared.pageShowHandler = () => {
+        resetClearState();
         if (isYouTubeWatchPage() && effectiveYouTubeBypassEnabled()) scheduleClear();
       };
       window.addEventListener('pageshow', shared.pageShowHandler);

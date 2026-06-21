@@ -1,6 +1,6 @@
 {
   "name": "fadblock",
-  "version": "1.0.87",
+  "version": "1.0.95",
   "description": "FAdblock — Chrome ve Firefox ucun ad blocker extension",
   "private": true,
   "scripts": {
@@ -12,7 +12,8 @@
     "pack:firefox": "node scripts/build-firefox.js",
     "stage:chrome": "node scripts/chrome-package.js",
     "stage:firefox": "node scripts/firefox-package.js",
-    "install:local": "bash scripts/install.sh"
+    "install:local": "bash scripts/install.sh",
+    "submit:firefox": "node scripts/sign-firefox.js"
   },
   "devDependencies": {
     "canvas": "^3.2.3",

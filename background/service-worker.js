@@ -899,6 +899,10 @@ async function syncSiteRecoveryRules() {
 async function syncBlockingRulesState() {
   const shouldEnableNetwork = _enabled && _categorySettings.network !== false;
   const shouldEnableYouTubeRules = shouldEnableNetwork && _categorySettings.youtubeBypass !== false;
+  const supportedRulesets = new Set((chrome.runtime.getManifest()?.declarative_net_request?.rule_resources || [])
+    .filter((rule) => rule?.enabled !== false)
+    .map((rule) => rule.id));
+  const canUseYouTubeRules = supportedRulesets.has('youtube_ads');
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const filterIds  = existing.filter(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES).map(r => r.id);
   const adultKwIds = existing.filter(r => r.id >= ADULT_KW_RULE_BASE && r.id < ADULT_KW_RULE_BASE + ADULT_KW_PATTERNS.length + 10).map(r => r.id);
@@ -909,11 +913,11 @@ async function syncBlockingRulesState() {
     {
       enableRulesetIds: [
         ...(shouldEnableNetwork ? ['adblock_main'] : []),
-        ...(shouldEnableYouTubeRules ? ['youtube_ads'] : []),
+        ...(shouldEnableYouTubeRules && canUseYouTubeRules ? ['youtube_ads'] : []),
       ],
       disableRulesetIds: [
         ...(shouldEnableNetwork ? [] : ['adblock_main']),
-        ...(shouldEnableYouTubeRules ? [] : ['youtube_ads']),
+        ...(!shouldEnableYouTubeRules || !canUseYouTubeRules ? ['youtube_ads'] : []),
       ]
     }
   );
@@ -1463,6 +1467,36 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
     case 'UPDATE_ADULT_FILTER':
       fetchAndUpdateAdultRules().then(() => sendResponse({ ok: true }));
+      return true;
+
+    case 'GET_DEBUG_LOG':
+      chrome.tabs.query({ active: true, lastFocusedWindow: true }).then(async (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (!tabId) { sendResponse({ list: [] }); return; }
+        try {
+          const [result] = await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => {
+              try { return JSON.parse(sessionStorage.getItem('fadblock_log') || '[]'); } catch(e) { return []; }
+            },
+          });
+          sendResponse({ list: result?.result || [] });
+        } catch(e) { sendResponse({ list: [] }); }
+      });
+      return true;
+
+    case 'CLEAR_DEBUG_LOG':
+      chrome.tabs.query({ active: true, lastFocusedWindow: true }).then(async (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (!tabId) { sendResponse({}); return; }
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => { try { sessionStorage.removeItem('fadblock_log'); } catch(e) {} },
+          });
+        } catch(e) {}
+        sendResponse({});
+      });
       return true;
 
     case 'RUN_CLEANUP':

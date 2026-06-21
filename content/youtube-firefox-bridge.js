@@ -4,234 +4,139 @@
   if (!/firefox/i.test(navigator.userAgent)) return;
   if (!location.hostname.endsWith('youtube.com')) return;
 
-  function shouldInject() {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['adblock_enabled', 'category_settings'], (data) => {
-        const enabled = data.adblock_enabled !== false;
-        const categories = { youtubeBypass: true, ...(data.category_settings || {}) };
-        resolve(enabled && categories.youtubeBypass !== false);
-      });
+  // Access the actual page window (bypasses X-Ray vision)
+  const pw = window.wrappedJSObject;
+  if (!pw || pw.__fadblockFirefoxBridgeActive) return;
+  pw.__fadblockFirefoxBridgeActive = true;
+
+  // Spoof google_ad_status so YouTube thinks ads are enabled.
+  // youtube-inject-v2.js (MAIN world) also does this; belt-and-suspenders.
+  try {
+    Object.defineProperty(pw, 'google_ad_status', {
+      configurable: true,
+      get: exportFunction(function () { return '1'; }, pw),
+      set: exportFunction(function () {}, pw),
     });
-  }
+  } catch (e) {}
 
-  function injectPageScript() {
-    if (document.getElementById('__fadblock_ff_yt_bridge__')) return;
-    const script = document.createElement('script');
-    script.id = '__fadblock_ff_yt_bridge__';
-    script.textContent = `(() => {
-      'use strict';
-      if (window.__fadblockFirefoxBridgeActive) return;
-      window.__fadblockFirefoxBridgeActive = true;
-
-      const PLAYER_RE = /\\/youtubei\\/v\\d+\\/(player|next)\\b|\\/player(?!.*get_drm_license)|\\/playlist\\?list=|\\/watch\\?[tv]=|\\/get_watch\\?/i;
-      const AD_KEYS = new Set([
-        'adClientParams',
-
-        'adBreaks',
-        'adServingData',
-        'adState',
-        'adTag',
-        'adTagParameters',
-        'adSafetyReason',
-        'adSignalsInfo',
-        'adTrackingParams',
-        'adDisplayConfig',
-        'adMetadata',
-        'adRenderers',
-        'adInfoRenderer',
-        'adParams',
-        'adPod',
-        'adMarkers',
-        'playerAdsOverlay',
-        'watchAdsInfo',
-        'promotedVideoRenderer',
-        'promotedSkippableVideoRenderer',
-        'promotedProductRenderer',
-        'sponsorshipsRenderer',
-        'paidContentOverlayRenderer',
-        'campaign',
-        'adBlockerMessageRenderer',
-        'enforcementMessageRenderer',
-        'enforcementEntity',
-        'adBlockerMessage',
-        'adBreakServiceSettings',
-        'adAttribution',
-        'instreamVideoAdRenderer',
-        'linearAdSequenceRenderer',
-        'adDurationRemaining',
-        'adBreakService',
-        'adLayoutServiceSettings',
-        'adVideoId',
-        'adSlotLoggingData',
-        'adPlacementConfig',
-        'companionAds',
-        'carouselAdRenderer',
-        'displayAd',
-        'searchPyvRenderer',
-        'promotedSpotlightVideoRenderer',
-        'adHoverTextButtonRenderer',
-        'adBadgeRenderer',
-        'ads',
-        'adUnitRenderer',
-        'adTextImageButtonRenderer',
-        'adActionInterstitialRenderer',
-        'fullscreenAdRenderer',
-        'invideoOverlayAdRenderer',
-        'mastHeadAdRenderer',
-        'brightcoveAdRenderer'
-      ]);
-
-      function isObject(value) {
-        return !!value && typeof value === 'object' && !Array.isArray(value);
-      }
-
-      function isAdObject(value) {
-        if (!isObject(value)) return false;
-        const keys = Object.keys(value);
-        return keys.length > 0 && keys.every((k) => AD_KEYS.has(k));
-      }
-
-      function sanitize(value, depth = 0) {
-        if (depth > 16 || value === null || typeof value !== 'object') return value;
-
-        if (Array.isArray(value)) {
-          return value
-            .filter((item) => !isAdObject(item))
-            .map((item) => sanitize(item, depth + 1))
-            .filter((item) => item !== undefined);
-        }
-
-        const out = {};
-        for (const [key, child] of Object.entries(value)) {
-          if (key === 'adBreakHeartbeatParams') { out[key] = { heartbeatIntervals: [2147483647] }; continue; }
-          if (key === 'adBreaks' || key === 'adPlacements' || key === 'playerAds' || key === 'adSlots') { out[key] = []; continue; }
-          if (AD_KEYS.has(key)) continue;
-          out[key] = sanitize(child, depth + 1);
-        }
-
-        const status = out.playabilityStatus;
-        if (isObject(status)) {
-          const reason = String(status.reason || '');
-          const errorScreen = status.errorScreen || {};
-          const isAdblockEnforcement =
-            !!errorScreen.enforcementMessageRenderer ||
-            !!errorScreen.adBlockerMessageRenderer ||
-            /adblock|ad block|disable.+ad blocker|allow youtube ads/i.test(reason);
-          if (isAdblockEnforcement) {
-            out.playabilityStatus = {
-              status: 'OK',
-              playableInEmbed: true
-            };
+  // Inject a minimal fetch interceptor into MAIN world to fix UNPLAYABLE player responses.
+  // When logged in to YouTube, the server sends playabilityStatus:{status:"UNPLAYABLE"} with
+  // enforcementMessageRenderer. CSS/DOM removal alone can't fix this — the player's internal
+  // state is UNPLAYABLE and playVideo() won't work. We must intercept the response before
+  // the player reads it.
+  try {
+    if (!pw.__fadblockPlayerFixActive) {
+      pw.__fadblockPlayerFixActive = true;
+      const script = document.createElement('script');
+      script.textContent = `(function(){
+        if(window.__fadblockPlayerFix)return;
+        window.__fadblockPlayerFix=true;
+        var PLAYER_RE=/\\/youtubei\\/v\\d+\\/(player|next)\\b|\\/get_watch\\?/;
+        var ENFORCE_RE=/adblock|ad block|disable.{0,30}ad|allow youtube ads|\\u0431\\u043b\\u043e\\u043a\\u0438\\u0440|reklam engelleyici/i;
+        function fixPlayerObj(o){
+          if(!o||typeof o!=='object')return o;
+          var ps=o.playabilityStatus;
+          if(ps&&(ps.status==='UNPLAYABLE'||ps.status==='ERROR')){
+            var es=ps.errorScreen||{};
+            if(es.enforcementMessageRenderer||es.adBlockerMessageRenderer||ENFORCE_RE.test(ps.reason||'')){
+              o.playabilityStatus={status:'OK',playableInEmbed:true};
+            }
           }
+          if(Array.isArray(o.adPlacements))o.adPlacements=[];
+          if(Array.isArray(o.playerAds))o.playerAds=[];
+          if(Array.isArray(o.adBreaks))o.adBreaks=[];
+          return o;
         }
-
-        if (Array.isArray(out.messages) && out.messages[0]?.youThereRenderer) {
-          try { delete out.messages[0].youThereRenderer; } catch (e) {}
+        function hookProp(name){
+          var _val;
+          try{
+            Object.defineProperty(window,name,{
+              configurable:true,
+              get:function(){return _val;},
+              set:function(v){_val=fixPlayerObj(v);}
+            });
+          }catch(e){}
         }
-
-        if (out.adClientParams?.isAd) return undefined;
-        if (out.command?.reelWatchEndpoint?.adClientParams?.isAd) return undefined;
-
-        return out;
-      }
-
-      const AD_FAST_KEYS = ['"adPlacements"', '"playerAds"', '"adSlots"', '"adBreaks"',
-        '"enforcementMessageRenderer"', '"adBlockerMessageRenderer"', '"adBreakHeartbeatParams"'];
-
-      function cleanJson(text) {
-        if (!AD_FAST_KEYS.some((k) => text.includes(k))) return text;
-        try {
-          return JSON.stringify(sanitize(JSON.parse(text)));
-        } catch (e) {
-          return text;
-        }
-      }
-
-      function getUrl(input) {
-        try {
-          if (typeof input === 'string') return input;
-          if (input instanceof URL) return input.href;
-          if (input instanceof Request) return input.url;
-        } catch (e) {}
-        return '';
-      }
-
-      function patchInitialPlayerResponse() {
-        try {
-          if (window.ytInitialPlayerResponse) {
-            window.ytInitialPlayerResponse = sanitize(window.ytInitialPlayerResponse);
-          }
-        } catch (e) {}
-        try {
-          if (window.playerResponse) {
-            window.playerResponse = sanitize(window.playerResponse);
-          }
-        } catch (e) {}
-      }
-
-      try {
-        Object.defineProperty(window, 'google_ad_status', {
-          configurable: true,
-          get() { return '1'; },
-          set() {}
-        });
-      } catch (e) {}
-
-      const nativeFetch = typeof window.fetch === 'function' ? window.fetch.bind(window) : null;
-      if (nativeFetch) {
-        window.fetch = function (input, init) {
-          const url = getUrl(input);
-          return nativeFetch(input, init).then((response) => {
-            if (!PLAYER_RE.test(url)) return response;
-            const clone = response.clone();
-            return response.text().then((text) => {
-              return new Response(cleanJson(text), {
-                status: clone.status,
-                statusText: clone.statusText,
-                headers: clone.headers
-              });
-            }).catch(() => clone);
+        hookProp('ytInitialPlayerResponse');
+        hookProp('playerResponse');
+        var _fetch=window.fetch;
+        window.fetch=function(input,init){
+          var url=typeof input==='string'?input:(input&&input.url)||'';
+          var p=_fetch.apply(this,arguments);
+          if(!PLAYER_RE.test(url))return p;
+          return p.then(function(r){
+            return r.text().then(function(t){
+              try{return new Response(JSON.stringify(fixPlayerObj(JSON.parse(t))),
+                {status:r.status,statusText:r.statusText,headers:r.headers});}
+              catch(e){return new Response(t,{status:r.status,statusText:r.statusText,headers:r.headers});}
+            });
           });
         };
-      }
+        var _xhrOpen=XMLHttpRequest.prototype.open;
+        var _xhrSend=XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open=function(m,u){
+          this._fadUrl=typeof u==='string'?u:'';
+          return _xhrOpen.apply(this,arguments);
+        };
+        XMLHttpRequest.prototype.send=function(){
+          if(PLAYER_RE.test(this._fadUrl||'')){
+            this.addEventListener('readystatechange',function(){
+              if(this.readyState!==4)return;
+              try{
+                var cleaned=JSON.stringify(fixPlayerObj(JSON.parse(this.responseText)));
+                Object.defineProperty(this,'responseText',{configurable:true,value:cleaned});
+                Object.defineProperty(this,'response',{configurable:true,value:cleaned});
+              }catch(e){}
+            });
+          }
+          return _xhrSend.apply(this,arguments);
+        };
+      })();`;
+      (document.documentElement || document.head || document.body || document).appendChild(script);
+      script.remove();
+    }
+  } catch (e) {}
 
-      const xhrOpen = XMLHttpRequest.prototype.open;
-      const xhrSend = XMLHttpRequest.prototype.send;
-      XMLHttpRequest.prototype.open = function (method, url) {
-        this.__fadblockYoutubeUrl = typeof url === 'string' ? url : '';
-        return xhrOpen.apply(this, arguments);
-      };
-      XMLHttpRequest.prototype.send = function () {
-        if (PLAYER_RE.test(this.__fadblockYoutubeUrl || '')) {
-          this.addEventListener('readystatechange', function () {
-            if (this.readyState !== 4) return;
-            try {
-              const cleaned = cleanJson(this.responseText);
-              Object.defineProperty(this, 'responseText', {
-                configurable: true,
-                value: cleaned
-              });
-              Object.defineProperty(this, 'response', {
-                configurable: true,
-                value: cleaned
-              });
-            } catch (e) {}
-          });
-        }
-        return xhrSend.apply(this, arguments);
-      };
+  // Stub window.googletag — googletagservices.com/gpt.js is blocked by adblock_main,
+  // so we provide a minimal fake to prevent YouTube enforcement detection.
+  try {
+    if (!pw.googletag) {
+      const fakeSlot = cloneInto({}, pw);
+      fakeSlot.addService = exportFunction(function () { return fakeSlot; }, pw);
+      fakeSlot.setTargeting = exportFunction(function () { return fakeSlot; }, pw);
+      fakeSlot.defineSizeMapping = exportFunction(function () { return fakeSlot; }, pw);
+      fakeSlot.getSlotElementId = exportFunction(function () { return ''; }, pw);
 
-      patchInitialPlayerResponse();
-      document.addEventListener('yt-navigate-finish', patchInitialPlayerResponse);
-      setTimeout(patchInitialPlayerResponse, 800);
-      setTimeout(patchInitialPlayerResponse, 2000);
-    })();`;
+      const fakePubads = cloneInto({}, pw);
+      const noop = exportFunction(function () {}, pw);
+      const returnPubads = exportFunction(function () { return fakePubads; }, pw);
+      fakePubads.addEventListener = returnPubads;
+      fakePubads.removeEventListener = returnPubads;
+      fakePubads.setTargeting = returnPubads;
+      fakePubads.clearTargeting = returnPubads;
+      fakePubads.refresh = noop;
+      fakePubads.enableLazyLoad = noop;
+      fakePubads.collapseEmptyDivs = noop;
+      fakePubads.disableInitialLoad = noop;
+      fakePubads.enableSingleRequest = noop;
+      fakePubads.setPrivacySettings = noop;
+      fakePubads.updateCorrelator = noop;
+      fakePubads.getTargeting = exportFunction(function () { return []; }, pw);
+      fakePubads.getSlots = exportFunction(function () { return []; }, pw);
 
-    (document.documentElement || document.head || document.body).appendChild(script);
-    script.remove();
-  }
+      const cmdQueue = cloneInto([], pw);
+      cmdQueue.push = exportFunction(function (fn) { try { fn(); } catch (e) {} return 0; }, pw);
 
-  shouldInject().then((ok) => {
-    if (ok) injectPageScript();
-  });
+      const gt = cloneInto({ apiReady: true, pubadsReady: true }, pw);
+      gt.cmd = cmdQueue;
+      gt.pubads = exportFunction(function () { return fakePubads; }, pw);
+      gt.enableServices = noop;
+      gt.defineSlot = exportFunction(function () { return fakeSlot; }, pw);
+      gt.defineOutOfPageSlot = exportFunction(function () { return fakeSlot; }, pw);
+      gt.display = noop;
+      gt.destroySlots = exportFunction(function () { return true; }, pw);
+      Object.defineProperty(pw, 'googletag', { configurable: true, value: gt });
+    }
+  } catch (e) {}
+
 })();
