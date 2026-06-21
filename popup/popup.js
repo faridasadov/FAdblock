@@ -197,33 +197,6 @@ async function init() {
   $('openOptions').addEventListener('click', () => chrome.runtime.openOptionsPage());
   $('donateBtn').addEventListener('click', () => chrome.tabs.create({ url: PAYPAL_URL }));
 
-  $('exportLogsBtn').addEventListener('click', async () => {
-    const [tab, debugRes] = await Promise.all([
-      chrome.tabs.query({ active: true, currentWindow: true }).then(([t]) => t),
-      chrome.runtime.sendMessage({ type: 'GET_DEBUG_LOG' }),
-    ]);
-    const data = {
-      exported_at: new Date().toISOString(),
-      url: tab?.url || '',
-      tab_title: tab?.title || '',
-      user_agent: navigator.userAgent,
-      logs: debugRes?.list || [],
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    await chrome.downloads.download({ url, filename: `fadblock-debug-log-${ts}.json`, saveAs: true });
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-    $('exportLogsBtn').textContent = '✓ Saved to Downloads!';
-    setTimeout(() => { $('exportLogsBtn').textContent = '⬇ Export Logs'; }, 2000);
-  });
-
-  $('clearLogsBtn').addEventListener('click', async () => {
-    await chrome.runtime.sendMessage({ type: 'CLEAR_DEBUG_LOG' });
-    $('clearLogsBtn').textContent = '✓ Cleared';
-    setTimeout(() => { $('clearLogsBtn').textContent = '✕ Clear Logs'; }, 2000);
-  });
-
   $('pickBtn').addEventListener('click', async () => {
     const activeTab = await getActiveTab();
     if (activeTab?.id) {

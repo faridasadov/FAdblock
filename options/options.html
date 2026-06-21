@@ -10,16 +10,21 @@
   <div class="page">
     <header class="page-header">
       <img src="../icons/icon48.png" alt="" aria-hidden="true" class="header-icon" />
-      <div>
+      <div class="header-text">
         <h1>FAdblock</h1>
         <p class="subtitle" data-i18n="optionsSubtitle">Parametrlər</p>
       </div>
+      <span class="header-version" id="headerVersion"></span>
     </header>
 
     <main>
-      <!-- Stats -->
-      <section class="card">
-        <h2 data-i18n="optionsStatsTitle">Statistika</h2>
+
+      <!-- ── Statistics (full width) ── -->
+      <section class="card card--full">
+        <div class="card-head">
+          <span class="card-icon">📊</span>
+          <h2 data-i18n="optionsStatsTitle">Statistika</h2>
+        </div>
         <div class="stats-row">
           <div class="stat">
             <span class="stat-n" id="totalBlocked">0</span>
@@ -30,14 +35,16 @@
             <span class="stat-l" data-i18n="optionsToday">Bu gün</span>
           </div>
         </div>
-        <button class="btn btn--danger" id="resetStats" data-i18n="optionsResetStats">Statistikanı sıfırla</button>
         <div class="chart-wrap" id="chartWrap" aria-label="7 günlük blok qrafiki"></div>
+        <button class="btn btn--danger btn--sm" id="resetStats" data-i18n="optionsResetStats">Statistikanı sıfırla</button>
       </section>
 
-      <!-- Block type stats -->
+      <!-- ── Block type stats ── -->
       <section class="card">
-        <h2 data-i18n="optionsTypeStatsTitle">Blok növü statistikası</h2>
-        <p class="hint" data-i18n="optionsTypeStatsHint">Hansı növ sorğuların bloklandığı.</p>
+        <div class="card-head">
+          <span class="card-icon">📋</span>
+          <h2 data-i18n="optionsTypeStatsTitle">Blok növü</h2>
+        </div>
         <div class="type-stats" id="typeStats">
           <div class="type-row"><span class="type-lbl" data-i18n="typeScript">Script</span><div class="type-bar-wrap"><div class="type-bar" id="bar-script"></div></div><span class="type-cnt" id="cnt-script">0</span></div>
           <div class="type-row"><span class="type-lbl" data-i18n="typeImage">Şəkil</span><div class="type-bar-wrap"><div class="type-bar" id="bar-image"></div></div><span class="type-cnt" id="cnt-image">0</span></div>
@@ -48,61 +55,153 @@
         </div>
       </section>
 
-      <!-- Whitelist -->
+      <!-- ── Per-site stats ── -->
       <section class="card">
-        <h2 data-i18n="optionsWhitelistTitle">İcazə verilən saytlar</h2>
+        <div class="card-head">
+          <span class="card-icon">📈</span>
+          <h2 data-i18n="optionsSiteStatsTitle">Sayt statistikası</h2>
+        </div>
+        <p class="hint" data-i18n="optionsSiteStatsHint">Ən çox reklam bloklanan saytlar (top 10).</p>
+        <ol class="site-stats-list" id="siteStatsList">
+          <li class="empty-hint" id="siteStatsEmpty" data-i18n="optionsSiteStatsEmpty">Hələ məlumat yoxdur</li>
+        </ol>
+        <button class="btn btn--danger btn--sm" id="clearSiteStats" data-i18n="optionsClearSiteStats">Sıfırla</button>
+      </section>
+
+      <!-- ── Adult content filter (full width) ── -->
+      <section class="card card--full card--adult">
+        <div class="card-head">
+          <span class="card-icon">🔞</span>
+          <h2 data-i18n="optionsAdultTitle">Yetkinlər üçün məzmun filtri</h2>
+        </div>
+
+        <div class="pref-grid">
+          <div class="pref-row">
+            <div class="pref-info">
+              <div class="pref-label" data-i18n="optionsAdultBlockLabel">18+ sayt bloklama</div>
+              <div class="pref-hint" data-i18n="optionsAdultBlockHint">Tanınan yetkin məzmun saytlarını blokla</div>
+            </div>
+            <label class="toggle" aria-label="Adult sites filter">
+              <input type="checkbox" id="adultFilterToggle" />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="pref-row">
+            <div class="pref-info">
+              <div class="pref-label">SafeSearch (Google · Bing · Yandex · DDG)</div>
+              <div class="pref-hint">18+ filtri aktiv olduqda axtarış nəticələrindən yetkin məzmun gizlədilir</div>
+            </div>
+            <span class="safe-search-badge" id="safeSearchBadge">18+ filtri ilə aktivdir</span>
+          </div>
+
+          <div class="pref-row">
+            <div class="pref-info">
+              <div class="pref-label" data-i18n="optionsYtFilterLabel">YouTube filtrasiyası</div>
+              <div class="pref-hint" data-i18n="optionsYtFilterHint">YouTube-da 18+ açar söz daşıyan videoları gizlət</div>
+            </div>
+            <label class="toggle" aria-label="YouTube filter">
+              <input type="checkbox" id="ytFilterToggle" />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="pref-row">
+            <div class="pref-info">
+              <div class="pref-label" data-i18n="optionsYtRestrictedLabel">YouTube Restricted Mode</div>
+              <div class="pref-hint" data-i18n="optionsYtRestrictedHint">YouTube-un öz server filtrini aktiv et (ən güclü metod)</div>
+            </div>
+            <label class="toggle" aria-label="YouTube Restricted Mode">
+              <input type="checkbox" id="ytRestrictedToggle" />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="pref-row">
+            <div class="pref-info">
+              <div class="pref-label" data-i18n="optionsSocialFilterLabel">Reddit · TikTok · Twitter/X filtri</div>
+              <div class="pref-hint" data-i18n="optionsSocialFilterHint">Bu platformalarda 18+ məzmunu gizlət</div>
+            </div>
+            <label class="toggle" aria-label="Social filter">
+              <input type="checkbox" id="socialFilterToggle" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="filter-meta-row">
+          <p class="hint" id="adultFilterMeta">—</p>
+          <button class="btn btn--primary btn--sm" id="updateAdultFilter" data-i18n="optionsFiltersUpdate">Yenilə</button>
+        </div>
+      </section>
+
+      <!-- ── Whitelist ── -->
+      <section class="card">
+        <div class="card-head">
+          <span class="card-icon">✅</span>
+          <h2 data-i18n="optionsWhitelistTitle">İcazə verilən saytlar</h2>
+        </div>
         <p class="hint" data-i18n="optionsWhitelistHint">Bu saytlarda bloklama işləmir.</p>
         <div class="input-row">
           <input type="text" id="domainInput" placeholder="example.com"
             aria-label="Sayt domen adı" autocomplete="off" spellcheck="false" />
           <button class="btn btn--primary" id="addDomain" data-i18n="commonAdd">Əlavə et</button>
         </div>
-        <ul class="whitelist" id="whitelistEl" aria-label="İcazə verilən saytlar siyahısı">
+        <ul class="item-list" id="whitelistEl" aria-label="İcazə verilən saytlar siyahısı">
           <li class="empty-hint" id="emptyHint" data-i18n="commonEmptyList">Siyahı boşdur</li>
         </ul>
       </section>
 
-      <!-- Per-site stats -->
+      <!-- ── Custom blocked domains ── -->
       <section class="card">
-        <h2 data-i18n="optionsSiteStatsTitle">Sayt üzrə statistika</h2>
-        <p class="hint" data-i18n="optionsSiteStatsHint">Ən çox reklam bloklanan saytlar (top 10).</p>
-        <ol class="site-stats-list" id="siteStatsList">
-          <li class="empty-hint" id="siteStatsEmpty" data-i18n="optionsSiteStatsEmpty">Hələ məlumat yoxdur</li>
-        </ol>
-        <button class="btn btn--danger" id="clearSiteStats" data-i18n="optionsClearSiteStats">Sayt statistikasını sıfırla</button>
-      </section>
-
-      <!-- Custom CSS selectors -->
-      <section class="card">
-        <h2 data-i18n="optionsSelectorsTitle">Xüsusi CSS filtrlər</h2>
-        <p class="hint" data-i18n="optionsSelectorsHint">Öz CSS selectorlarınızı əlavə edin. Həmin elementlər bütün səhifələrdə gizlədilir.</p>
-        <div class="input-row">
-          <input type="text" id="selectorInput" placeholder=".banner-ad, #sidebar"
-            aria-label="CSS selector" autocomplete="off" spellcheck="false" />
-          <button class="btn btn--primary" id="addSelector" data-i18n="commonAdd">Əlavə et</button>
+        <div class="card-head">
+          <span class="card-icon">🚫</span>
+          <h2 data-i18n="optionsBlockedTitle">Bloklanmış domenlər</h2>
         </div>
-        <ul class="whitelist" id="selectorList" aria-label="Xüsusi CSS selectorlar">
-          <li class="empty-hint" id="selectorEmpty" data-i18n="commonEmptyList">Siyahı boşdur</li>
-        </ul>
-      </section>
-
-      <!-- Custom blocked domains -->
-      <section class="card">
-        <h2 data-i18n="optionsBlockedTitle">Bloklanmış domenlər</h2>
         <p class="hint" data-i18n="optionsBlockedHint">Kontekst menyusundan və ya manual əlavə edilmiş blok siyahısı.</p>
         <div class="input-row">
           <input type="text" id="blockInput" placeholder="example.com"
             aria-label="Bloklanacaq domen" autocomplete="off" spellcheck="false" />
           <button class="btn btn--primary" id="addBlock" data-i18n="commonAdd">Əlavə et</button>
         </div>
-        <ul class="whitelist" id="blockList" aria-label="Bloklanmış domenlər">
+        <ul class="item-list" id="blockList" aria-label="Bloklanmış domenlər">
           <li class="empty-hint" id="blockEmpty" data-i18n="commonEmptyList">Siyahı boşdur</li>
         </ul>
       </section>
 
-      <!-- Preferences -->
+      <!-- ── Custom CSS selectors ── -->
       <section class="card">
-        <h2 data-i18n="optionsPrefsTitle">Tənzimləmələr</h2>
+        <div class="card-head">
+          <span class="card-icon">🎨</span>
+          <h2 data-i18n="optionsSelectorsTitle">Xüsusi CSS filtrlər</h2>
+        </div>
+        <p class="hint" data-i18n="optionsSelectorsHint">Öz CSS selectorlarınızı əlavə edin. Həmin elementlər bütün səhifələrdə gizlədilir.</p>
+        <div class="input-row">
+          <input type="text" id="selectorInput" placeholder=".banner-ad, #sidebar"
+            aria-label="CSS selector" autocomplete="off" spellcheck="false" />
+          <button class="btn btn--primary" id="addSelector" data-i18n="commonAdd">Əlavə et</button>
+        </div>
+        <ul class="item-list" id="selectorList" aria-label="Xüsusi CSS selectorlar">
+          <li class="empty-hint" id="selectorEmpty" data-i18n="commonEmptyList">Siyahı boşdur</li>
+        </ul>
+      </section>
+
+      <!-- ── Filter list ── -->
+      <section class="card">
+        <div class="card-head">
+          <span class="card-icon">🔄</span>
+          <h2 data-i18n="optionsFiltersTitle">Filter siyahısı</h2>
+        </div>
+        <p class="hint" id="filtersMeta" data-i18n="optionsFiltersLoading">Yüklənir...</p>
+        <button class="btn btn--primary btn--sm" id="updateFilters" data-i18n="optionsFiltersUpdate">İndi yenilə</button>
+      </section>
+
+      <!-- ── Preferences ── -->
+      <section class="card">
+        <div class="card-head">
+          <span class="card-icon">⚙️</span>
+          <h2 data-i18n="optionsPrefsTitle">Tənzimləmələr</h2>
+        </div>
 
         <div class="pref-row">
           <div class="pref-info">
@@ -115,7 +214,7 @@
           </label>
         </div>
 
-        <div class="pref-row">
+        <div class="pref-row" style="border-bottom:none">
           <div class="pref-info">
             <div class="pref-label" data-i18n="optionsBadgeColorLabel">Badge rəngi</div>
           </div>
@@ -128,71 +227,14 @@
         </div>
       </section>
 
-      <!-- Adult content filter -->
-      <section class="card card--adult">
-        <h2 data-i18n="optionsAdultTitle">🔞 Yetkinlər üçün məzmun filtri</h2>
-        <p class="hint" data-i18n="optionsAdultHint">Tanınan 18+ saytları blokla. YouTube-da açar söz əsaslı filtrasiya aktivdir.</p>
-
-        <div class="pref-row">
-          <div class="pref-info">
-            <div class="pref-label" data-i18n="optionsAdultBlockLabel">18+ sayt bloklama</div>
-            <div class="pref-hint" data-i18n="optionsAdultBlockHint">Tanınan yetkin məzmun saytlarını blokla</div>
-          </div>
-          <label class="toggle" aria-label="Adult sites filter">
-            <input type="checkbox" id="adultFilterToggle" />
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="pref-row">
-          <div class="pref-info">
-            <div class="pref-label" data-i18n="optionsYtFilterLabel">YouTube filtrasiyası</div>
-            <div class="pref-hint" data-i18n="optionsYtFilterHint">YouTube-da 18+ açar söz daşıyan videoları gizlət</div>
-          </div>
-          <label class="toggle" aria-label="YouTube filter">
-            <input type="checkbox" id="ytFilterToggle" />
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="pref-row">
-          <div class="pref-info">
-            <div class="pref-label" data-i18n="optionsYtRestrictedLabel">YouTube Restricted Mode</div>
-            <div class="pref-hint" data-i18n="optionsYtRestrictedHint">YouTube-un öz server filtrini aktiv et (ən güclü metod)</div>
-          </div>
-          <label class="toggle" aria-label="YouTube Restricted Mode">
-            <input type="checkbox" id="ytRestrictedToggle" />
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="pref-row">
-          <div class="pref-info">
-            <div class="pref-label" data-i18n="optionsSocialFilterLabel">Reddit · TikTok · Twitter/X filtri</div>
-            <div class="pref-hint" data-i18n="optionsSocialFilterHint">Bu platformalarda 18+ məzmunu gizlət</div>
-          </div>
-          <label class="toggle" aria-label="Social filter">
-            <input type="checkbox" id="socialFilterToggle" />
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <p class="hint" id="adultFilterMeta" style="margin-top:4px">—</p>
-        <button class="btn btn--primary" id="updateAdultFilter" data-i18n="optionsFiltersUpdate">İndi yenilə</button>
-      </section>
-
-      <!-- Filter list -->
+      <!-- ── Import / Export ── -->
       <section class="card">
-        <h2 data-i18n="optionsFiltersTitle">Filter siyahısı</h2>
-        <p class="hint" id="filtersMeta" data-i18n="optionsFiltersLoading">Yüklənir...</p>
-        <button class="btn btn--primary" id="updateFilters" data-i18n="optionsFiltersUpdate">İndi yenilə</button>
-      </section>
-
-      <!-- Import / Export -->
-      <section class="card">
-        <h2 data-i18n="optionsImportExportTitle">Parametrləri ixrac / idxal et</h2>
-        <p class="hint" data-i18n="optionsImportExportHint">Whitelist, xüsusi CSS filtrlər və bloklanmış domenləri JSON faylı kimi saxla və ya bərpa et.</p>
-        <div class="input-row">
+        <div class="card-head">
+          <span class="card-icon">📦</span>
+          <h2 data-i18n="optionsImportExportTitle">Parametrləri ixrac / idxal</h2>
+        </div>
+        <p class="hint" data-i18n="optionsImportExportHint">Whitelist, xüsusi CSS filtrlər və bloklanmış domenləri JSON faylı kimi saxla.</p>
+        <div class="btn-group">
           <button class="btn btn--primary" id="exportBtn" data-i18n="optionsExport">⬇ İxrac et</button>
           <label class="btn btn--secondary" id="importLabel"><span data-i18n="optionsImport">⬆ İdxal et</span>
             <input type="file" id="importFile" accept=".json" hidden />
@@ -200,24 +242,44 @@
         </div>
       </section>
 
-      <!-- Donate -->
+      <!-- ── Debug / Diagnostics (full width) ── -->
+      <section class="card card--full card--debug">
+        <div class="card-head">
+          <span class="card-icon">🐛</span>
+          <h2>Diaqnostika</h2>
+        </div>
+        <p class="hint">Debug loglarını ixrac et (problem bildirərkən əlavə et) və ya sil.</p>
+        <div class="btn-group">
+          <button class="btn btn--secondary" id="exportLogsBtn">⬇ Logları ixrac et</button>
+          <button class="btn btn--danger" id="clearLogsBtn">✕ Logları sil</button>
+        </div>
+      </section>
+
+      <!-- ── Donate ── -->
       <section class="card card--donate">
-        <h2 data-i18n="optionsDonateTitle">♥ Layihəni dəstəklə</h2>
+        <div class="card-head">
+          <span class="card-icon">♥</span>
+          <h2 data-i18n="optionsDonateTitle">Layihəni dəstəklə</h2>
+        </div>
         <p data-i18n="optionsDonateText">FAdblock pulsuzdur və həmişə pulsuz qalacaq. Bəyəndinsə, bir qəhvə al!</p>
         <a class="btn btn--paypal" id="donateBtn" href="#" target="_blank">
           <span data-i18n="optionsDonatePaypal">PayPal ilə dəstəklə</span>
         </a>
       </section>
 
-      <!-- About -->
+      <!-- ── About ── -->
       <section class="card card--about">
-        <h2 data-i18n="optionsAboutTitle">Haqqında</h2>
-        <p><span data-i18n="optionsAboutText">FAdblock Chrome və Firefox üçün açıq mənbəli reklam blokeridir. Manifest V3 · declarativeNetRequest · Kosmetik filtrlər · YouTube ad-skip · 18+ filteri</span></p>
+        <div class="card-head">
+          <span class="card-icon">ℹ️</span>
+          <h2 data-i18n="optionsAboutTitle">Haqqında</h2>
+        </div>
+        <p><span data-i18n="optionsAboutText">FAdblock Firefox üçün açıq mənbəli reklam blokeridir. MV3 · declarativeNetRequest · Kosmetik filtrlər · YouTube ad-bypass · CIS ad şəbəkə bloku · 18+ filtri · SafeSearch</span></p>
         <div class="author-row">
           <span class="author-label" data-i18n="optionsAuthorLabel">Müəllif</span>
           <a class="author-link" href="https://github.com/faridasadov" target="_blank">github.com/faridasadov</a>
         </div>
       </section>
+
     </main>
   </div>
   <script src="options.js" type="module"></script>

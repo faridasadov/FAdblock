@@ -14,6 +14,14 @@ function parseDomain(raw) {
     .replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/.*$/, '');
 }
 
+// --- Version header ---
+function showVersion() {
+  const el = $('headerVersion');
+  if (el && chrome.runtime.getManifest) {
+    el.textContent = 'v' + chrome.runtime.getManifest().version;
+  }
+}
+
 // --- Whitelist ---
 function renderWhitelist(list) {
   const ul = $('whitelistEl');
@@ -244,9 +252,31 @@ async function importSettings(file) {
   } catch { alert(t('importError')); }
 }
 
+// --- Debug logs ---
+async function exportDebugLogs() {
+  const btn = $('exportLogsBtn');
+  const [tab, debugRes] = await Promise.all([
+    chrome.tabs.query({ active: true, currentWindow: true }).then(([t]) => t).catch(() => null),
+    chrome.runtime.sendMessage({ type: 'GET_DEBUG_LOG' }),
+  ]);
+  const data = {
+    exported_at: new Date().toISOString(),
+    url: tab?.url || '',
+    user_agent: navigator.userAgent,
+    logs: debugRes?.list || [],
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  await chrome.downloads.download({ url, filename: `fadblock-debug-log-${ts}.json`, saveAs: true });
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  if (btn) { btn.textContent = '✓ Yükləndi'; setTimeout(() => { btn.textContent = '⬇ Logları ixrac et'; }, 2500); }
+}
+
 // --- Init ---
 async function init() {
   applyI18n();
+  showVersion();
   document.title = t('optionsPageTitle');
 
   const [
@@ -381,6 +411,14 @@ async function init() {
   $('exportBtn').addEventListener('click', exportSettings);
   $('importFile').addEventListener('change', e => {
     if (e.target.files[0]) importSettings(e.target.files[0]);
+  });
+
+  // Debug logs
+  $('exportLogsBtn').addEventListener('click', exportDebugLogs);
+  $('clearLogsBtn').addEventListener('click', async () => {
+    const btn = $('clearLogsBtn');
+    await chrome.runtime.sendMessage({ type: 'CLEAR_DEBUG_LOG' });
+    if (btn) { btn.textContent = '✓ Silindi'; setTimeout(() => { btn.textContent = '✕ Logları sil'; }, 2000); }
   });
 
   const btn = $('donateBtn');
