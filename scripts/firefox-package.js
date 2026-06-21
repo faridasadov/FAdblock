@@ -10,7 +10,7 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
   fs.mkdirSync(stageDir, { recursive: true });
 
   // Only copy extension files — exclude dev scripts, build tools, hooks, etc.
-  const EXTENSION_ENTRIES = ['manifest.json', 'background', 'content', 'common', 'icons', 'popup', 'rules', '_locales'];
+  const EXTENSION_ENTRIES = ['manifest.json', 'background', 'content', 'common', 'icons', 'options', 'popup', 'rules', '_locales'];
   for (const entry of EXTENSION_ENTRIES) {
     const src = path.join(rootDir, entry);
     if (fs.existsSync(src)) {
