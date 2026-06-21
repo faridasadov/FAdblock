@@ -1,6 +1,6 @@
 {
   "name": "fadblock",
-  "version": "1.0.95",
+  "version": "1.0.96",
   "description": "FAdblock — Chrome ve Firefox ucun ad blocker extension",
   "private": true,
   "scripts": {

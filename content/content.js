@@ -392,7 +392,10 @@
 
       const now = Date.now();
       const maxClearCount = IS_FIREFOX ? 1 : 4;
-      if (shared.clearCount >= maxClearCount && (now - shared.lastClearAt) < 15000) {
+      // Real enforcement overlay always bypasses rate limit — a false-positive
+      // hadUnstarted event must not block the actual overlay removal + loadVideoById.
+      const hasRealOverlay = directMatches.length > 0 || hadAdInterrupting;
+      if (!hasRealOverlay && shared.clearCount >= maxClearCount && (now - shared.lastClearAt) < 15000) {
         return;
       }
       shared.clearCount += 1;
