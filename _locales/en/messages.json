@@ -3,7 +3,7 @@
     "message": "FAdblock"
   },
   "extDescription": {
-    "message": "Fast and lightweight ad blocker for Chrome. Skips YouTube ads, blocks trackers and adult content."
+    "message": "Fast and lightweight ad blocker for Firefox. Skips YouTube ads, blocks trackers and adult content."
   },
   "toggleAdblockCommand": {
     "message": "Toggle FAdblock"
@@ -184,7 +184,7 @@
     "message": "About"
   },
   "optionsAboutText": {
-    "message": "FAdblock is an open-source ad blocker for Firefox. Manifest V3 · declarativeNetRequest · Cosmetic filters · YouTube ad-skip · 18+ filter"
+    "message": "FAdblock is an open-source ad blocker for Firefox. MV3 · declarativeNetRequest · Cosmetic filters · YouTube ad-skip · CIS ad network block · 18+ filter · SafeSearch"
   },
   "optionsAuthorLabel": {
     "message": "Author"
@@ -300,7 +300,7 @@
     "message": "Badge color"
   },
   "optionsAdultTitle": {
-    "message": "🔞 Adult content filter"
+    "message": "Adult content filter"
   },
   "optionsAdultHint": {
     "message": "Block known adult sites. YouTube keyword filtering works automatically."
@@ -334,5 +334,14 @@
   },
   "optionsSocialFilterHint": {
     "message": "Hide 18+ content on these platforms"
+  },
+  "optionsSafeSearchLabel": {
+    "message": "SafeSearch (Google · Bing · Yandex · DDG)"
+  },
+  "optionsSafeSearchHint": {
+    "message": "Hides adult content from search results when the adult filter is enabled"
+  },
+  "optionsSafeSearchBadge": {
+    "message": "Active with adult filter"
   }
 }

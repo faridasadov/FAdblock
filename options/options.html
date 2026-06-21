@@ -89,10 +89,10 @@
 
           <div class="pref-row">
             <div class="pref-info">
-              <div class="pref-label">SafeSearch (Google · Bing · Yandex · DDG)</div>
-              <div class="pref-hint">18+ filtri aktiv olduqda axtarış nəticələrindən yetkin məzmun gizlədilir</div>
+              <div class="pref-label" data-i18n="optionsSafeSearchLabel">SafeSearch</div>
+              <div class="pref-hint" data-i18n="optionsSafeSearchHint">18+ filtri aktiv olduqda axtarış nəticələrindən yetkin məzmun gizlədilir</div>
             </div>
-            <span class="safe-search-badge" id="safeSearchBadge">18+ filtri ilə aktivdir</span>
+            <span class="safe-search-badge" data-i18n="optionsSafeSearchBadge">18+ filtri ilə aktivdir</span>
           </div>
 
           <div class="pref-row">
@@ -239,19 +239,6 @@
           <label class="btn btn--secondary" id="importLabel"><span data-i18n="optionsImport">⬆ İdxal et</span>
             <input type="file" id="importFile" accept=".json" hidden />
           </label>
-        </div>
-      </section>
-
-      <!-- ── Debug / Diagnostics (full width) ── -->
-      <section class="card card--full card--debug">
-        <div class="card-head">
-          <span class="card-icon">🐛</span>
-          <h2>Diaqnostika</h2>
-        </div>
-        <p class="hint">Debug loglarını ixrac et (problem bildirərkən əlavə et) və ya sil.</p>
-        <div class="btn-group">
-          <button class="btn btn--secondary" id="exportLogsBtn">⬇ Logları ixrac et</button>
-          <button class="btn btn--danger" id="clearLogsBtn">✕ Logları sil</button>
         </div>
       </section>
 

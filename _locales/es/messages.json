@@ -3,7 +3,7 @@
     "message": "FAdblock"
   },
   "extDescription": {
-    "message": "Fast and lightweight ad blocker for Chrome. Skips YouTube ads, blocks trackers and adult content."
+    "message": "Bloqueador de anuncios rápido para Firefox. Omite anuncios de YouTube, bloquea rastreadores y contenido adulto."
   },
   "toggleAdblockCommand": {
     "message": "Activar o desactivar FAdblock"
@@ -300,7 +300,7 @@
     "message": "Color del distintivo"
   },
   "optionsAdultTitle": {
-    "message": "🔞 Filtro de contenido adulto"
+    "message": " Filtro de contenido adulto"
   },
   "optionsAdultHint": {
     "message": "Bloquear sitios 18+ conocidos. El filtro de YouTube funciona automáticamente."
@@ -334,5 +334,14 @@
   },
   "optionsSocialFilterHint": {
     "message": "Ocultar contenido 18+ en estas plataformas"
+  },
+  "optionsSafeSearchLabel": {
+    "message": "SafeSearch (Google · Bing · Yandex · DDG)"
+  },
+  "optionsSafeSearchHint": {
+    "message": "Oculta contenido adulto de los resultados de búsqueda con el filtro activo"
+  },
+  "optionsSafeSearchBadge": {
+    "message": "Activo con filtro adulto"
   }
 }
