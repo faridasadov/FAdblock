@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.0.100",
+  "version": "1.1.1",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "permissions": [
@@ -42,6 +42,37 @@
       ],
       "run_at": "document_start",
       "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "exclude_matches": [
+        "*://*.youtube.com/*"
+      ],
+      "js": [
+        "content/popup-blocker.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "*://www.google.com/search*",
+        "*://google.com/search*",
+        "*://www.bing.com/search*",
+        "*://bing.com/search*",
+        "*://duckduckgo.com/*",
+        "*://yandex.com/search/*",
+        "*://yandex.ru/search/*",
+        "*://yandex.az/search/*"
+      ],
+      "js": [
+        "content/safe-search.js"
+      ],
+      "run_at": "document_start",
       "all_frames": false
     },
     {

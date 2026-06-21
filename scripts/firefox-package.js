@@ -41,9 +41,8 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
           !entry.js.includes('content/youtube-filter.js');
       })
       .map((entry) => {
-        const next = { ...entry };
-        delete next.world;
-        return next;
+        // Keep world: "MAIN" — Firefox 128+ (our strict_min_version) supports it
+        return { ...entry };
       });
   }
   if (!manifest.browser_specific_settings) manifest.browser_specific_settings = {};

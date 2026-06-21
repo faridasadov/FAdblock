@@ -25,6 +25,8 @@ const ADULT_KW_PATTERNS  = [
   '^https?://[^/?#]+\\.xxx([/?#]|$)',    // *.xxx TLD
   '^https?://[^/?#]+\\.adult([/?#]|$)', // *.adult TLD
   '^https?://[^/?#]+\\.porn([/?#]|$)',  // *.porn TLD
+  '^https?://(www\\.)?porn',            // hostname starts with "porn" (pornstar, porn365, etc.)
+  '^https?://[^/?#]*porn([./?#]|$)',    // hostname label ends with "porn" (labporn.cc, etc.)
   '^https?://[^/?#]*porno',             // "porno" anywhere in hostname
   '^https?://[^/?#]*trah',             // "trah*" in hostname (vtrahe, trahnuli, trah.tv)
   '^https?://[^/?#]*trach',            // "trach*" in hostname (trachtube)
@@ -106,6 +108,8 @@ const ADULT_DOMAINS_FALLBACK = [
   '2porno365.run','sex-studentki.live','sex-studentki.ru',
   // Additional domains reported by users
   'bysex.net','strip2.co','vtrahe.work',
+  'doeda.com','noodlemagazine.com','evooli.com',
+  'labporn.cc','hdabla.net','rusoska.com',
 ];
 
 function t(key, substitutions) {
@@ -705,6 +709,7 @@ async function syncCustomBlockedRules(list) {
 const BON_APPETIT_META = 'https://raw.githubusercontent.com/Bon-Appetit/porn-domains/main/meta.json';
 const BON_APPETIT_BASE = 'https://raw.githubusercontent.com/Bon-Appetit/porn-domains/main/';
 const STEVEN_BLACK_URL = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts';
+const HAGEZI_URL       = 'https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/porn.txt';
 
 function isPriorityAdultDomain(domain) {
   return /\.(ru|ua|by|kz|uz|xxx|adult|porn|sex)$/.test(domain) ||
@@ -742,11 +747,12 @@ function mergeAdultDomains(...lists) {
 async function fetchAndUpdateAdultRules() {
   try {
     // Combine multiple large sources instead of treating them as mutual fallbacks.
-    const [bonAppetit, stevenBlack] = await Promise.all([
+    const [bonAppetit, stevenBlack, hagezi] = await Promise.all([
       _fetchBonAppetit(),
       _fetchStevenBlack(),
+      _fetchHagezi(),
     ]);
-    const domains = mergeAdultDomains(bonAppetit, stevenBlack);
+    const domains = mergeAdultDomains(bonAppetit, stevenBlack, hagezi);
     if (!domains.length) return;
 
     await chrome.storage.local.set({
@@ -794,6 +800,24 @@ async function _fetchStevenBlack() {
       if (parts.length < 2) continue;
       let domain = parts[1].toLowerCase();
       if (!domain.includes('.') || domain === '0.0.0.0') continue;
+      if (domain.startsWith('www.')) domain = domain.slice(4);
+      domains.push(domain);
+    }
+    return domains;
+  } catch { return []; }
+}
+
+async function _fetchHagezi() {
+  try {
+    const res = await fetch(HAGEZI_URL, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const text = await res.text();
+    const domains = [];
+    for (const line of text.split('\n')) {
+      const l = line.trim();
+      if (!l || l.startsWith('#') || l.startsWith('!') || l.startsWith('|')) continue;
+      let domain = l.toLowerCase();
+      if (!domain.includes('.')) continue;
       if (domain.startsWith('www.')) domain = domain.slice(4);
       domains.push(domain);
     }
