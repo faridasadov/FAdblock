@@ -462,6 +462,10 @@ const CIS_AD_DOMAINS = [
   'ad.rambler.ru', 'cnt.rbc.ru', 'ad.rbc.ru',
   // VK / OK.ru ads
   'ads.ok.ru', 'ads.vk.com', 'vkadcorp.com',
+  // Video ad networks (streaming / VAST providers)
+  'vast.yandex.ru', 'mc.yandex.ru', 'trk.mail.ru',
+  'ad.rutube.ru', 'ads.rutube.ru',
+  'cdnvideo.ru', 'video.tt',
 ];
 
 async function fetchAndUpdateFilters() {
