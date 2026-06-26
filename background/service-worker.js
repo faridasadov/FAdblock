@@ -466,6 +466,11 @@ const CIS_AD_DOMAINS = [
   'vast.yandex.ru', 'mc.yandex.ru', 'trk.mail.ru',
   'ad.rutube.ru', 'ads.rutube.ru',
   'cdnvideo.ru', 'video.tt',
+  // VAST rotation / instream ad servers (CIS streaming sites)
+  'reyden-x.com', 'vast.reyden-x.com',
+  'vastroll.ru', 'vastroll.net',
+  'adplay.ru', 'vidroll.ru',
+  'vast.videocdn.tv',
 ];
 
 async function fetchAndUpdateFilters() {

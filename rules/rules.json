@@ -1952,5 +1952,200 @@
         "other"
       ]
     }
+  },
+  {
+    "priority": 2,
+    "condition": {
+      "urlFilter": "||kodik.cc/*/adsbygoogle.js",
+      "resourceTypes": [
+        "script"
+      ]
+    },
+    "action": {
+      "type": "block"
+    },
+    "id": 93
+  },
+  {
+    "priority": 2,
+    "condition": {
+      "urlFilter": "/rtb/kodik_instream?",
+      "resourceTypes": [
+        "xmlhttprequest"
+      ]
+    },
+    "action": {
+      "type": "block"
+    },
+    "id": 94
+  },
+  {
+    "priority": 2,
+    "condition": {
+      "urlFilter": "||kodik.biz/*/adsbygoogle.js",
+      "resourceTypes": [
+        "script"
+      ]
+    },
+    "action": {
+      "type": "block"
+    },
+    "id": 95
+  },
+  {
+    "priority": 2,
+    "condition": {
+      "urlFilter": "||kodik.info/*/adsbygoogle.js",
+      "resourceTypes": [
+        "script"
+      ]
+    },
+    "action": {
+      "type": "block"
+    },
+    "id": 96
+  },
+  {
+    "id": 97,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||reyden-x.com^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "media",
+        "sub_frame",
+        "other"
+      ]
+    },
+    "priority": 2
+  },
+  {
+    "id": 98,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||vastroll.ru^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "media",
+        "other"
+      ]
+    },
+    "priority": 2
+  },
+  {
+    "id": 99,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||vastroll.net^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "media",
+        "other"
+      ]
+    },
+    "priority": 2
+  },
+  {
+    "id": 100,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||adplay.ru^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "media",
+        "other"
+      ]
+    },
+    "priority": 2
+  },
+  {
+    "id": 101,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||vidroll.ru^",
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "media",
+        "other"
+      ]
+    },
+    "priority": 2
+  },
+  {
+    "priority": 2,
+    "id": 102,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "sub_frame",
+        "other"
+      ],
+      "urlFilter": "||kinogo-may.vipapi.org^"
+    }
+  },
+  {
+    "priority": 2,
+    "id": 103,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "resourceTypes": [
+        "script",
+        "image",
+        "xmlhttprequest",
+        "media",
+        "other"
+      ],
+      "urlFilter": "||kinogo.r.worldssl.net^"
+    }
+  },
+  {
+    "priority": 2,
+    "id": 104,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "resourceTypes": [
+        "script"
+      ],
+      "urlFilter": "/kinogo/js/ads/"
+    }
+  },
+  {
+    "priority": 2,
+    "id": 105,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "media",
+        "other"
+      ],
+      "urlFilter": "||instreamatic.com^"
+    }
   }
 ]
