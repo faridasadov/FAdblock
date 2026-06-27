@@ -1,9 +1,8 @@
-// Chrome-only MAIN world YouTube response sanitizer.
+// MAIN world YouTube response sanitizer (Chrome + Firefox 128+).
 (function () {
   'use strict';
 
   try {
-    if (/firefox/i.test(navigator.userAgent)) return;
     if (!location.hostname.endsWith('youtube.com')) return;
     if (window.__fadblockYoutubePruneActive) return;
     window.__fadblockYoutubePruneActive = true;
