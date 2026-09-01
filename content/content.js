@@ -1,20 +1,23 @@
 (function () {
   'use strict';
 
+  // Debug log lives in sessionStorage only (the settings page reads it).
+  // Set sessionStorage.fadblock_debug = '1' to also mirror entries to the console.
+  const MAX_LOG_ENTRIES = 300;
+
   function fadLog(event, data) {
     const entry = { t: Date.now(), ev: event, world: 'ISOLATED', d: data || {}, url: location.href };
-    console.log('[FAD]', event, data || '');
     try {
-      const logs = JSON.parse(sessionStorage.getItem('fadblock_log') || '[]');
-      logs.push(entry);
-      if (logs.length > 1000) logs = logs.slice(-1000);
-      sessionStorage.setItem('fadblock_log', JSON.stringify(logs));
+      if (sessionStorage.getItem('fadblock_debug') === '1') {
+        console.log('[FAD]', event, data || '');
+      }
     } catch (e) {}
     try {
-      fetch('http://localhost:4317/fadblock-log', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ exported_at: new Date().toISOString(), logs: [{ source: 'isolated', event, data: data || {}, url: location.href, at: new Date().toISOString() }] }),
-      }).catch(() => {});
+      let logs = JSON.parse(sessionStorage.getItem('fadblock_log') || '[]');
+      if (!Array.isArray(logs)) logs = [];
+      logs.push(entry);
+      if (logs.length > MAX_LOG_ENTRIES) logs = logs.slice(-MAX_LOG_ENTRIES);
+      sessionStorage.setItem('fadblock_log', JSON.stringify(logs));
     } catch (e) {}
   }
 
@@ -63,6 +66,12 @@
     // YouTube overlay ads only — NOT .video-ads (breaks player) or .ytp-ad-skip-button-container (we click it)
     '.ytp-ad-overlay-container', '.ytp-ad-text-overlay',
     '[data-adtype]', '[data-ad-comet-type]',
+    // Yandex Direct / RTB
+    '[id^="yandex_rtb_"]', '[id^="Ya_"]', '[id^="adfox_"]',
+    'div[id*="yandex"][id*="rtb"]',
+    'iframe[src*="yastatic.net/safeframe"]',
+    // Generic empty ad iframes (must have data-ad or be in known ad wrappers)
+    '.adblock-ad iframe:not([src])', '.ad-container iframe:not([src])',
   ];
 
   const GENERIC_SELECTORS = [

@@ -2147,5 +2147,50 @@
       ],
       "urlFilter": "||instreamatic.com^"
     }
+  },
+  {
+    "priority": 1,
+    "id": 106,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||yandex.ru/an/",
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "other"]
+    }
+  },
+  {
+    "priority": 1,
+    "id": 107,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||yastatic.net/safeframe-bundles/",
+      "resourceTypes": ["sub_frame", "script", "other"]
+    }
+  },
+  {
+    "priority": 1,
+    "id": 108,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||mc.webvisor.org^",
+      "resourceTypes": ["script", "image", "xmlhttprequest", "other"]
+    }
+  },
+  {
+    "priority": 1,
+    "id": 109,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||mc.yandex.md^",
+      "resourceTypes": ["script", "image", "xmlhttprequest", "other"]
+    }
+  },
+  {
+    "priority": 1,
+    "id": 110,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||yandex.ru/ads/",
+      "resourceTypes": ["script", "other"]
+    }
   }
 ]

@@ -25,7 +25,7 @@
   // state is UNPLAYABLE and playVideo() won't work. We must intercept the response before
   // the player reads it.
   try {
-    if (!pw.__fadblockPlayerFixActive) {
+    if (!pw.__fadblockPlayerFixActive && !pw.__fadblockYoutubePruneActive) {
       pw.__fadblockPlayerFixActive = true;
       const script = document.createElement('script');
       script.textContent = `(function(){
@@ -91,6 +91,18 @@
           }
           return _xhrSend.apply(this,arguments);
         };
+        function unregisterSW(){
+          try{
+            if(navigator.serviceWorker){
+              navigator.serviceWorker.getRegistrations().then(function(regs){
+                regs.forEach(function(r){r.unregister();});
+              });
+            }
+          }catch(e){}
+        }
+        unregisterSW();
+        document.addEventListener('yt-navigate-start',unregisterSW);
+        document.addEventListener('yt-navigate-finish',unregisterSW);
       })();`;
       (document.documentElement || document.head || document.body || document).appendChild(script);
       script.remove();

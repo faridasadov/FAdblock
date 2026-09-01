@@ -6,11 +6,23 @@ const path = require('path');
 function prepareChromePackage(rootDir = path.resolve(__dirname, '..')) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fadblock-chrome-'));
   const stageDir = path.join(tempDir, 'package');
+  const allowlist = [
+    '_locales',
+    '_metadata',
+    'background',
+    'common',
+    'content',
+    'icons',
+    'manifest.json',
+    'options',
+    'popup',
+    'rules',
+  ];
 
   fs.mkdirSync(stageDir, { recursive: true });
 
-  for (const entry of fs.readdirSync(rootDir)) {
-    if (['.git', 'node_modules', 'dist'].includes(entry)) continue;
+  for (const entry of allowlist) {
+    if (!fs.existsSync(path.join(rootDir, entry))) continue;
     fs.cpSync(path.join(rootDir, entry), path.join(stageDir, entry), { recursive: true });
   }
 
@@ -19,6 +31,7 @@ function prepareChromePackage(rootDir = path.resolve(__dirname, '..')) {
   if (manifest.background) {
     delete manifest.background.scripts;
   }
+  delete manifest.browser_specific_settings;
   if (Array.isArray(manifest.content_scripts)) {
     manifest.content_scripts = manifest.content_scripts.filter((entry) => {
       if (!Array.isArray(entry.js)) return true;
@@ -31,6 +44,15 @@ function prepareChromePackage(rootDir = path.resolve(__dirname, '..')) {
   } catch {}
   try {
     fs.unlinkSync(path.join(stageDir, 'content', 'youtube-inject.js'));
+  } catch {}
+  try {
+    fs.rmSync(path.join(stageDir, 'scripts', 'firefox-package.js'));
+  } catch {}
+  try {
+    fs.rmSync(path.join(stageDir, 'scripts', 'build-firefox.js'));
+  } catch {}
+  try {
+    fs.rmSync(path.join(stageDir, 'scripts', 'test-youtube-firefox.js'));
   } catch {}
 
   const youtubeRulesPath = path.join(stageDir, 'rules', 'youtube-rules.json');

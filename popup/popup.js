@@ -1,4 +1,5 @@
 import { applyI18n, t } from '../common/i18n.js';
+import { loadAndApplyTheme } from '../common/theme.js';
 
 const PAYPAL_URL = 'https://www.paypal.com/donate/?hosted_button_id=Z79A28XHU8L7S';
 const $ = id => document.getElementById(id);
@@ -111,6 +112,7 @@ async function bindSiteRules(domain) {
 }
 
 async function init() {
+  loadAndApplyTheme();
   applyI18n();
   document.title = 'FAdblock';
 

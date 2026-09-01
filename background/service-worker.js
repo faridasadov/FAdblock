@@ -18,8 +18,11 @@ const REQUEST_LOG_KEY       = 'request_log';
 const USER_ACTIONS_KEY      = 'user_action_history';
 const CUSTOM_SELECTORS_KEY  = 'custom_selectors';
 
+// Firefox/Chrome allow 5000 dynamic rules in total. Budget (must stay under 5000):
+//   filters 3400 + adult domains 900 + adult keywords ~40 + recovery 200
+//   + whitelist/custom (user-sized, typically < 50)  =  ~4540
 const FILTER_RULE_BASE   = 10000;
-const MAX_FILTER_RULES   = 4000;
+const MAX_FILTER_RULES   = 3400;
 const ADULT_KW_RULE_BASE = 49000;
 const ADULT_KW_PATTERNS  = [
   '^https?://[^/?#]+\\.xxx([/?#]|$)',    // *.xxx TLD
@@ -28,7 +31,8 @@ const ADULT_KW_PATTERNS  = [
   '^https?://(www\\.)?porn',            // hostname starts with "porn" (pornstar, porn365, etc.)
   '^https?://[^/?#]*porn([./?#]|$)',    // hostname label ends with "porn" (labporn.cc, etc.)
   '^https?://[^/?#]*porno',             // "porno" anywhere in hostname
-  '^https?://[^/?#]*trah',             // "trah*" in hostname (vtrahe, trahnuli, trah.tv)
+  // "trah" only at a label boundary — must NOT match ingosstrah.ru / strahovka.ru
+  '^https?://([^/?#]*[.-])?v?trah',
   '^https?://[^/?#]*trach',            // "trach*" in hostname (trachtube)
   '^https?://[^/?#]*erotik',           // "erotik*" in hostname (erotika.ru — CIS spelling)
   '^https?://[^/?#]*seks[^ei]',        // "seks" in hostname — avoids "seksi" (Indonesian legit)
@@ -54,23 +58,33 @@ const ADULT_KW_PATTERNS  = [
   '^https?://[^/?#]*onlyfans[^/?#]*',
   '^https?://[^/?#]*camgirl[^/?#]*',
   '^https?://[^/?#]*fetish[^/?#]*',
-  '^https?://[^/?#]*milf[^/?#]*',
-  '^https?://[^/?#]*nsfw[^/?#]*',
-  '^https?://[^/?#]*nude[^/?#]*',
+  // "milf" at a label boundary — must NOT match milfordschools.org and similar place names
+  '^https?://([^/?#]*[.-])?milfs?([.-][^/?#]*)?([/?#]|$)',
+  // "nsfw" at a label boundary — must NOT match nsfwjs.com (an ML library)
+  '^https?://([^/?#]*[.-])?nsfw([.-][^/?#]*)?([/?#]|$)',
+  // "nude" at a label boundary — must NOT match nudelholz.de and similar
+  '^https?://([^/?#]*[.-])?nude[sd]?([.-][^/?#]*)?([/?#]|$)',
   '^https?://[^/?#]*erotic[^/?#]*',
-  '^https?://[^?#]*/[^?#]*(?:porno|porn|hentai|rule34|nsfw|camgirl|fap|erotic|fetish|milf)[^?#]*([?#/]|$)',
+  // Path rules. Strong tokens may run into any suffix; ambiguous short tokens
+  // (porn, fap, milf, nsfw…) must sit on a delimiter so /fapi-client, /nsfwjs
+  // and similar legitimate paths are not blocked.
+  '^https?://[^?#]*[/_.-](?:porno|pornhub|hentai|rule34|camgirl|onlyfans)[^?#]*([?#/]|$)',
+  '^https?://[^?#]*[/_.-](?:porn|fap|erotic|fetish|milf|nsfw)(?:[/_.-][^?#]*)?([?#/]|$)',
 ];
 const ADULT_RULE_BASE    = 50000;
-const MAX_ADULT_RULES    = 50000; // max domains stored in cache
+// Cache only a little more than can ever become rules — storing 50k domains cost
+// megabytes of storage and a large merge in the event page for no added blocking.
+const MAX_ADULT_RULES    = 3000;
 const MAX_ADULT_DOMAIN_RULES = 900; // DNR cap: 5000 total limit − 4000 filter rules − ~100 others
 const RECOVERY_RULE_BASE = 85000;
-const MAX_RECOVERY_RULES = 500;
+const MAX_RECOVERY_RULES = 200;
 const ADULT_META_KEY     = 'adult_filter_meta';
 const ADULT_DOMAINS_KEY  = 'adult_filter_domains';
 const MILESTONES = [100, 500, 1000, 5000, 10000, 50000, 100000];
 const DISABLED_DYNAMIC_STATE_KEY = '_disabled_dynamic_rule_sets';
 const MAX_REQUEST_LOG = 250;
 const MAX_USER_ACTIONS = 60;
+const MAX_SITE_STATS = 500;
 
 const BADGE_COLORS = { red: '#e74c3c', blue: '#3498db', green: '#27ae60', purple: '#9b59b6' };
 const DEFAULT_CATEGORY_SETTINGS = {
@@ -271,10 +285,26 @@ function getRequestLogLabel(ruleId) {
   return 'static-filter';
 }
 
-async function appendRequestLog(entry) {
+// Request-log writes are buffered in memory and flushed on a timer. Writing on
+// every blocked request meant one storage read-modify-write per request, which
+// both burned I/O on ad-heavy pages and lost entries to concurrent writes.
+const _pendingRequestLog = [];
+let _requestLogTimer = null;
+
+function appendRequestLog(entry) {
+  _pendingRequestLog.unshift(entry);
+  if (_pendingRequestLog.length > MAX_REQUEST_LOG) _pendingRequestLog.length = MAX_REQUEST_LOG;
+  if (_requestLogTimer) return Promise.resolve();
+  _requestLogTimer = setTimeout(() => { flushRequestLog().catch(() => {}); }, 2000);
+  return Promise.resolve();
+}
+
+async function flushRequestLog() {
+  _requestLogTimer = null;
+  if (!_pendingRequestLog.length) return;
+  const batch = _pendingRequestLog.splice(0, _pendingRequestLog.length);
   const data = await chrome.storage.local.get(REQUEST_LOG_KEY);
-  const list = data[REQUEST_LOG_KEY] || [];
-  list.unshift(entry);
+  const list = [...batch, ...(data[REQUEST_LOG_KEY] || [])];
   if (list.length > MAX_REQUEST_LOG) list.length = MAX_REQUEST_LOG;
   await chrome.storage.local.set({ [REQUEST_LOG_KEY]: list });
 }
@@ -297,8 +327,11 @@ async function loadState() {
   const data = await chrome.storage.local.get([
     ENABLED_KEY, WHITELIST_KEY, CUSTOM_BLOCKED_KEY, PAUSE_KEY, SITE_PAUSE_KEY,
     NOTIF_ENABLED_KEY, BADGE_COLOR_KEY, ADULT_FILTER_KEY,
-    CATEGORY_SETTINGS_KEY, SITE_RULES_KEY
+    CATEGORY_SETTINGS_KEY, SITE_RULES_KEY, TYPE_STATS_KEY
   ]);
+  for (const [type, count] of Object.entries(data[TYPE_STATS_KEY] || {})) {
+    if (type in _typeStats) _typeStats[type] = count;
+  }
   _enabled            = data[ENABLED_KEY] !== false;
   _whitelist          = new Set(data[WHITELIST_KEY] || []);
   _pauseUntil         = data[PAUSE_KEY] || 0;
@@ -356,7 +389,9 @@ async function loadState() {
   const hasFilterRules = existing.some(r => r.id >= FILTER_RULE_BASE && r.id < FILTER_RULE_BASE + MAX_FILTER_RULES);
   if (_categorySettings.network !== false && !hasFilterRules) fetchAndUpdateFilters().catch(() => {});
 
-  rearmYouTubeTabs({ reload: true }).catch(() => {});
+  // Message the tabs instead of reloading them: loadState() runs on every event
+  // page wake-up, and reloading there threw away the user's playback position.
+  rearmYouTubeTabs({ reload: false }).catch(() => {});
 }
 loadState().catch((error) => {
   console.error('FAdblock loadState failed:', error);
@@ -684,8 +719,22 @@ async function flushStats() {
       siteStats[host] = (siteStats[host] || 0) + cnt;
     }
     _pendingSiteStats.clear();
-    await chrome.storage.local.set({ [SITE_STATS_KEY]: siteStats });
+    // Keep only the busiest hosts — this object used to grow without bound.
+    const hosts = Object.keys(siteStats);
+    if (hosts.length > MAX_SITE_STATS) {
+      const trimmed = {};
+      for (const host of hosts.sort((a, b) => siteStats[b] - siteStats[a]).slice(0, MAX_SITE_STATS)) {
+        trimmed[host] = siteStats[host];
+      }
+      await chrome.storage.local.set({ [SITE_STATS_KEY]: trimmed });
+    } else {
+      await chrome.storage.local.set({ [SITE_STATS_KEY]: siteStats });
+    }
   }
+
+  // Persist the per-type counters — they only lived in memory, so every event
+  // page suspension silently reset the breakdown shown in settings.
+  await chrome.storage.local.set({ [TYPE_STATS_KEY]: { ..._typeStats } });
 
   const today = new Date().toDateString();
   const hd = await chrome.storage.local.get(HISTORY_KEY);
@@ -765,7 +814,12 @@ function mergeAdultDomains(...lists) {
       if (!clean || !clean.includes('.') || seen.has(clean)) continue;
       seen.add(clean);
       if (isPriorityAdultDomain(clean)) priority.push(clean);
-      else rest.push(clean);
+      else if (rest.length < MAX_ADULT_RULES) rest.push(clean);
+      // Only MAX_ADULT_DOMAIN_RULES domains ever become rules, so stop as soon as
+      // there are enough priority domains to fill that budget.
+      if (priority.length >= MAX_ADULT_DOMAIN_RULES) {
+        return [...priority, ...rest].slice(0, MAX_ADULT_RULES);
+      }
       if (priority.length + rest.length >= MAX_ADULT_RULES) {
         return [...priority, ...rest].slice(0, MAX_ADULT_RULES);
       }
@@ -1309,8 +1363,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       Object.keys(_typeStats).forEach(k => _typeStats[k] = 0);
       if (_flushTimer) { clearTimeout(_flushTimer); _flushTimer = null; }
       chrome.storage.local.set({
-        [STATS_KEY]:   { total: 0, today: 0, lastReset: new Date().toDateString() },
-        [HISTORY_KEY]: {}
+        [STATS_KEY]:      { total: 0, today: 0, lastReset: new Date().toDateString() },
+        [HISTORY_KEY]:    {},
+        [TYPE_STATS_KEY]: { ..._typeStats }
       }).then(() => {
         refreshBadgesForAllTabs();
         sendResponse({ ok: true });
@@ -1382,11 +1437,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
 
     case 'GET_REQUEST_LOG':
-      chrome.storage.local.get(REQUEST_LOG_KEY)
+      // Flush the in-memory buffer first so the settings page shows current data.
+      flushRequestLog()
+        .catch(() => {})
+        .then(() => chrome.storage.local.get(REQUEST_LOG_KEY))
         .then(d => sendResponse({ list: d[REQUEST_LOG_KEY] || [] }));
       return true;
 
     case 'CLEAR_REQUEST_LOG':
+      _pendingRequestLog.length = 0;
+      if (_requestLogTimer) { clearTimeout(_requestLogTimer); _requestLogTimer = null; }
       chrome.storage.local.set({ [REQUEST_LOG_KEY]: [] }).then(() => sendResponse({ ok: true }));
       return true;
 
@@ -1498,7 +1558,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
     case 'RESET_TYPE_STATS':
       Object.keys(_typeStats).forEach(k => _typeStats[k] = 0);
-      sendResponse({ ok: true });
+      chrome.storage.local.set({ [TYPE_STATS_KEY]: { ..._typeStats } })
+        .then(() => sendResponse({ ok: true }));
       return true;
 
     // --- Adult filter ---

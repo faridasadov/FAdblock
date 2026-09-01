@@ -343,5 +343,10 @@
   },
   "optionsSafeSearchBadge": {
     "message": "Attivo con filtro adulti"
-  }
+  },
+  "optionsThemeTitle": { "message": "Aspetto" },
+  "themeLight": { "message": "Chiaro" },
+  "themeDark": { "message": "Scuro" },
+  "themeMidnight": { "message": "Mezzanotte" },
+  "themeSystem": { "message": "Sistema" }
 }

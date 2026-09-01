@@ -343,5 +343,10 @@
   },
   "optionsSafeSearchBadge": {
     "message": "Активно з фільтром 18+"
-  }
+  },
+  "optionsThemeTitle": { "message": "Зовнішній вигляд" },
+  "themeLight": { "message": "Світла" },
+  "themeDark": { "message": "Темна" },
+  "themeMidnight": { "message": "Північ" },
+  "themeSystem": { "message": "Системна" }
 }

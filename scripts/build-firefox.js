@@ -11,4 +11,4 @@ execFileSync('npx', [
   '--source-dir', stageDir,
   '--artifacts-dir', path.join(root, 'dist'),
   '--overwrite-dest',
-], { stdio: 'inherit' });
+], { stdio: 'inherit', shell: true });

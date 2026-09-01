@@ -343,5 +343,20 @@
   },
   "optionsSafeSearchBadge": {
     "message": "Yetişkin filtresiyle aktif"
+  },
+  "optionsThemeTitle": {
+    "message": "Görünüm"
+  },
+  "themeLight": {
+    "message": "Açık"
+  },
+  "themeDark": {
+    "message": "Koyu"
+  },
+  "themeMidnight": {
+    "message": "Gece"
+  },
+  "themeSystem": {
+    "message": "Sistem"
   }
 }

@@ -1,6 +1,18 @@
 #!/usr/bin/env node
 const path = require('path');
+const fs = require('fs');
+const { spawnSync } = require('child_process');
+
+if (!process.env.DISPLAY && !process.env.FADBLOCK_XVFB && fs.existsSync('/usr/bin/xvfb-run')) {
+  const result = spawnSync('/usr/bin/xvfb-run', ['-a', process.execPath, __filename, ...process.argv.slice(2)], {
+    stdio: 'inherit',
+    env: { ...process.env, FADBLOCK_XVFB: '1' },
+  });
+  process.exit(result.status ?? 1);
+}
+
 const { chromium } = require('playwright');
+const { prepareChromePackage } = require('./chrome-package');
 
 const EXT_PATH = path.resolve(__dirname, '..');
 const TEST_URL = process.argv[2] || 'https://www.youtube.com/watch?v=X5IkL48wBKk&list=RDX5IkL48wBKk&start_radio=1';
@@ -11,11 +23,12 @@ function delay(ms) {
 }
 
 async function main() {
+  const chromeSource = prepareChromePackage(EXT_PATH);
   const ctx = await chromium.launchPersistentContext('', {
     headless: false,
     args: [
-      `--disable-extensions-except=${EXT_PATH}`,
-      `--load-extension=${EXT_PATH}`,
+      `--disable-extensions-except=${chromeSource}`,
+      `--load-extension=${chromeSource}`,
       '--no-sandbox'
     ],
     viewport: { width: 1440, height: 960 },

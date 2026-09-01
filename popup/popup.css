@@ -1,16 +1,36 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
+html{border-radius:16px;overflow:hidden}
+:root,[data-theme="dark"]{
   --accent:#5c7cfa;--accent-2:#748ffc;
   --green:#40c057;--red:#fa5252;
   --bg:#0c1120;--surface:#131d2e;--surface-2:#1a2640;--surface-3:#203050;
   --text:#e9eef7;--muted:#7c8db5;--faint:#3a4a6b;
   --line:rgba(92,124,250,.13);
   --radius:14px;
+  --body-bg-from:#1a2640;
+}
+[data-theme="light"]{
+  --accent:#4263eb;--accent-2:#5c7cfa;
+  --green:#2f9e44;--red:#e03131;
+  --bg:#f0f2f8;--surface:#ffffff;--surface-2:#e8ecf4;--surface-3:#dce2f0;
+  --text:#1a1f36;--muted:#5c6894;--faint:#c6cfe8;
+  --line:rgba(66,99,235,.13);
+  --body-bg-from:#dce2f0;
+}
+[data-theme="midnight"]{
+  --accent:#7c6fcd;--accent-2:#9b8fdc;
+  --green:#40c057;--red:#fa5252;
+  --bg:#000000;--surface:#0d0d14;--surface-2:#13131f;--surface-3:#1a1a2e;
+  --text:#e0dcff;--muted:#7b72b0;--faint:#2a2745;
+  --line:rgba(124,111,205,.15);
+  --body-bg-from:#13131f;
 }
 body{
   font-family:'Inter','Segoe UI',system-ui,sans-serif;
-  background:radial-gradient(ellipse at top,#1a2640 0%,var(--bg) 65%);
+  background:radial-gradient(ellipse at top,var(--body-bg-from) 0%,var(--bg) 65%);
   color:var(--text);width:340px;
+  border-radius:16px;overflow:hidden;
+  transition:background .25s,color .25s;
 }
 .container{padding:14px;display:flex;flex-direction:column;gap:9px}
 .container.is-off .stats-grid,
@@ -28,7 +48,7 @@ body{
 .logo-img{width:26px;height:26px;filter:drop-shadow(0 0 6px rgba(92,124,250,.5))}
 .logo-text{
   font-size:15px;font-weight:800;letter-spacing:-.02em;
-  background:linear-gradient(90deg,#fff 0%,var(--accent-2) 100%);
+  background:linear-gradient(90deg,var(--text) 0%,var(--accent-2) 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
 
@@ -74,7 +94,7 @@ body{
 
 .quick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .quick-btn{
-  background:var(--surface-2);color:#c8d5f5;font-size:11px;font-weight:700;
+  background:var(--surface-2);color:var(--text);font-size:11px;font-weight:700;
   line-height:1.3;padding:10px 7px;border-radius:11px;
   border:1px solid rgba(92,124,250,.12);cursor:pointer;transition:all .18s;
 }

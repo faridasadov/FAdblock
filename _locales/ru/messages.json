@@ -343,5 +343,20 @@
   },
   "optionsSafeSearchBadge": {
     "message": "Активно с фильтром 18+"
+  },
+  "optionsThemeTitle": {
+    "message": "Внешний вид"
+  },
+  "themeLight": {
+    "message": "Светлая"
+  },
+  "themeDark": {
+    "message": "Тёмная"
+  },
+  "themeMidnight": {
+    "message": "Полночь"
+  },
+  "themeSystem": {
+    "message": "Системная"
   }
 }

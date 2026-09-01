@@ -196,6 +196,36 @@
         <button class="btn btn--primary btn--sm" id="updateFilters" data-i18n="optionsFiltersUpdate">İndi yenilə</button>
       </section>
 
+      <!-- ── Appearance / Theme ── -->
+      <section class="card card--full">
+        <div class="card-head">
+          <span class="card-icon">🎨</span>
+          <h2 data-i18n="optionsThemeTitle">Görünüş</h2>
+        </div>
+        <div class="theme-grid" id="themeGrid" role="group" aria-label="Theme selection">
+          <button class="theme-card" data-theme-id="light" aria-pressed="false">
+            <div class="theme-preview theme-preview--light"></div>
+            <span class="theme-card-icon">☀️</span>
+            <span class="theme-card-name" data-i18n="themeLight">Light</span>
+          </button>
+          <button class="theme-card" data-theme-id="dark" aria-pressed="false">
+            <div class="theme-preview theme-preview--dark"></div>
+            <span class="theme-card-icon">🌙</span>
+            <span class="theme-card-name" data-i18n="themeDark">Dark</span>
+          </button>
+          <button class="theme-card" data-theme-id="midnight" aria-pressed="false">
+            <div class="theme-preview theme-preview--midnight"></div>
+            <span class="theme-card-icon">🌚</span>
+            <span class="theme-card-name" data-i18n="themeMidnight">Midnight</span>
+          </button>
+          <button class="theme-card" data-theme-id="system" aria-pressed="false">
+            <div class="theme-preview theme-preview--system"></div>
+            <span class="theme-card-icon">💻</span>
+            <span class="theme-card-name" data-i18n="themeSystem">System</span>
+          </button>
+        </div>
+      </section>
+
       <!-- ── Preferences ── -->
       <section class="card">
         <div class="card-head">

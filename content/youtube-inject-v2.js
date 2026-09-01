@@ -10,18 +10,23 @@
 
     function FAD_LOG(event, data) {
       var entry = { t: Date.now(), ev: event, world: 'MAIN', d: data || {} };
-      console.log('[FAD]', event, data || '');
+      try {
+        if (sessionStorage.getItem('fadblock_debug') === '1') {
+          console.log('[FAD]', event, data || '');
+        }
+      } catch (e) {}
       try {
         var logs = JSON.parse(sessionStorage.getItem('fadblock_log') || '[]');
+        if (!Array.isArray(logs)) logs = [];
         logs.push(entry);
-        if (logs.length > 1000) logs = logs.slice(-1000);
+        if (logs.length > 300) logs = logs.slice(-300);
         sessionStorage.setItem('fadblock_log', JSON.stringify(logs));
       } catch (e) {}
     }
 
     FAD_LOG('inject_start', { url: location.href });
 
-    var PLAYER_RE = /\/youtubei\/v\d+\/(player|next)\b|\/player(?!.*get_drm_license)|\/playlist\?list=|\/watch\?[tv]=|\/get_watch\?/i;
+    var PLAYER_RE = /\/youtubei\/v\d+\/(player|next)(?!\/)|\/get_watch\?/i;
     var AD_CHECK_RE = /googleads\.g\.doubleclick\.net|\/pagead\/(id|aclk|interaction)|\/api\/stats\/ads/i;
     var AD_KEYS = new Set([
       'adClientParams',
@@ -92,34 +97,6 @@
     function sanitizeString(text) {
       if (typeof text !== 'string') return text;
       return text.replace(/"youThereRenderer":/g, '"no_youThereRenderer":');
-    }
-
-    var cachedStreamingData = null;
-
-    function getExpireFromUrl(url) {
-      if (typeof url !== 'string') return null;
-      var m = url.match(/[?&]expire=(\d+)/);
-      return m ? parseInt(m[1], 10) : null;
-    }
-
-    function hasValidStreamingUrls(sd) {
-      var nowSec = Date.now() / 1000;
-      var formats = (sd.formats || []).concat(sd.adaptiveFormats || []);
-      for (var i = 0; i < formats.length; i++) {
-        var exp = getExpireFromUrl(formats[i].url);
-        if (exp !== null && exp > nowSec + 60) return true;
-      }
-      return false;
-    }
-
-    function isStreamingDataExpired(sd) {
-      var nowSec = Date.now() / 1000;
-      var formats = (sd.formats || []).concat(sd.adaptiveFormats || []);
-      for (var i = 0; i < formats.length; i++) {
-        var exp = getExpireFromUrl(formats[i].url);
-        if (exp !== null && exp < nowSec) return true;
-      }
-      return false;
     }
 
     function sanitize(value, depth) {
@@ -199,18 +176,9 @@
       for (var fi = 0; fi < AD_FAST_KEYS.length; fi += 1) {
         if (text.indexOf(AD_FAST_KEYS[fi]) !== -1) { hasAds = true; break; }
       }
-      var hasStreamingData = text.indexOf('"streamingData"') !== -1;
-      if (!hasAds && !hasStreamingData) return text;
+      if (!hasAds) return text;
       try {
         var parsed = JSON.parse(sanitizeString(text));
-        if (parsed.streamingData) {
-          if (hasValidStreamingUrls(parsed.streamingData)) {
-            try { cachedStreamingData = JSON.parse(JSON.stringify(parsed.streamingData)); } catch (e) {}
-          } else if (cachedStreamingData && isStreamingDataExpired(parsed.streamingData)) {
-            parsed.streamingData = cachedStreamingData;
-          }
-        }
-        if (!hasAds) return JSON.stringify(parsed);
         var cleaned = sanitize(parsed);
         return JSON.stringify(cleaned);
       } catch (e) {
@@ -295,11 +263,20 @@
           FAD_LOG('fetch_player_intercepted', { url: url });
           var clone = response.clone();
           return response.text().then(function (text) {
-            return new Response(cleanJson(text), {
-              status: clone.status,
-              statusText: clone.statusText,
-              headers: clone.headers
-            });
+            try {
+              var newHeaders = new Headers(clone.headers);
+              newHeaders.delete('content-encoding');
+              return new Response(cleanJson(text), {
+                status: clone.status,
+                statusText: clone.statusText,
+                headers: newHeaders
+              });
+            } catch (he) {
+              return new Response(cleanJson(text), {
+                status: clone.status,
+                statusText: clone.statusText,
+              });
+            }
           }).catch(function () {
             return clone;
           });
@@ -340,8 +317,6 @@
 
     patchInitialPlayerResponse();
     document.addEventListener('yt-navigate-finish', patchInitialPlayerResponse);
-    setTimeout(patchInitialPlayerResponse, 800);
-    setTimeout(patchInitialPlayerResponse, 2000);
     window.__fadblockYoutubeStage = 'ready';
     FAD_LOG('inject_ready', { fetch_patched: !!nativeFetch });
 
@@ -389,18 +364,65 @@
           if (isSameVideoUrl(url)) { markBlocked('replace'); return; }
           return origReplace.call(this, url);
         };
+        var origReload = Location.prototype.reload;
+        Location.prototype.reload = function () {
+          if (location.pathname === '/watch') { markBlocked('reload'); return; }
+          return origReload.call(this);
+        };
+      } catch (e) {}
+
+      try {
+        var origHistoryGo = History.prototype.go;
+        History.prototype.go = function (delta) {
+          if (delta === 0 && location.pathname === '/watch') { markBlocked('history.go(0)'); return; }
+          return origHistoryGo.call(this, delta);
+        };
+      } catch (e) {}
+
+      try {
+        var origPushState = History.prototype.pushState;
+        History.prototype.pushState = function (state, title, url) {
+          if (url && isSameVideoUrl(url)) { markBlocked('pushState'); return; }
+          return origPushState.call(this, state, title, url);
+        };
+        var origReplaceState = History.prototype.replaceState;
+        History.prototype.replaceState = function (state, title, url) {
+          if (url) {
+            try {
+              var target = new URL(String(url), location.href);
+              var currV = new URLSearchParams(location.search).get('v');
+              if (target.pathname === '/watch' && target.searchParams.get('v') === currV) {
+                // Same video. Allow ONLY if target adds a meaningful non-zero timestamp
+                // (e.g. YouTube updating URL to ?t=60 while watching).
+                // Block everything else: enforcement uses ?v=X (no t) or ?v=X&t=0.
+                var targetT = parseInt(target.searchParams.get('t') || '0', 10);
+                var currT = parseInt(new URLSearchParams(location.search).get('t') || '0', 10);
+                var isTimestampUpdate = targetT > 0 && targetT !== currT;
+                if (!isTimestampUpdate) {
+                  markBlocked('replaceState-same');
+                  return;
+                }
+              }
+            } catch (e) {}
+          }
+          return origReplaceState.call(this, state, title, url);
+        };
       } catch (e) {}
 
       document.addEventListener('yt-navigate-start', function (e) {
         try {
-          var d = e.detail;
-          if (d && d.pageData && d.pageData.watchEndpoint) {
-            var cv = new URLSearchParams(location.search).get('v');
-            if (cv && d.pageData.watchEndpoint.videoId === cv) {
-              markBlocked('yt-navigate');
-              e.stopImmediatePropagation();
-              e.preventDefault();
-            }
+          var d = e.detail || {};
+          var cv = new URLSearchParams(location.search).get('v');
+          if (!cv) return;
+          var videoId = (d.pageData && d.pageData.watchEndpoint && d.pageData.watchEndpoint.videoId) ||
+                        (d.endpoint && d.endpoint.watchEndpoint && d.endpoint.watchEndpoint.videoId);
+          var navUrl = d.url ||
+                       (d.endpoint && d.endpoint.commandMetadata && d.endpoint.commandMetadata.webCommandMetadata && d.endpoint.commandMetadata.webCommandMetadata.url);
+          var isSame = (videoId && videoId === cv) || (navUrl && isSameVideoUrl(navUrl));
+          if (isSame) {
+            markBlocked('yt-navigate-start');
+            e.stopImmediatePropagation();
+            e.preventDefault();
           }
         } catch (ex) {}
       }, true);
@@ -408,6 +430,110 @@
       window.addEventListener('beforeunload', function () {
         try { sessionStorage.setItem('fadblock_unload', Date.now().toString()); } catch (e) {}
       });
+
+      // ====== v1.3.6: Position save/restore safety net ======
+      // Works for ANY restart mechanism: SPA nav, full page reload, or player reinit.
+      (function () {
+        var curVid = null, posKey = null, maxTime = 0, seekingFlag = false;
+        var vidEl = null, mutObs = null, restoreTimer = null;
+
+        function getVid() { return new URLSearchParams(location.search).get('v'); }
+
+        function savePos(t) {
+          try {
+            sessionStorage.setItem(posKey, t.toFixed(1));
+            sessionStorage.setItem(posKey + '_ts', Date.now().toString());
+          } catch (ex) {}
+        }
+
+        function onTimeUpdate() {
+          var t = vidEl.currentTime;
+          if (t > maxTime + 0.5) {
+            maxTime = t;
+            if (maxTime > 5) savePos(maxTime);
+          }
+          // In-place reset: same video element, currentTime jumped back to ~0
+          if (!seekingFlag && maxTime > 25 && t < 5 && t < maxTime - 20) {
+            FAD_LOG('unexpected_reset', { max: maxTime, at: t });
+            var savedMax = maxTime;
+            maxTime = 0;
+            clearTimeout(restoreTimer);
+            restoreTimer = setTimeout(function () {
+              try {
+                if (vidEl && vidEl.currentTime < 5 && getVid() === curVid) {
+                  vidEl.currentTime = savedMax;
+                  vidEl.play().catch(function () {});
+                  FAD_LOG('position_restored_inline', { to: savedMax });
+                }
+              } catch (ex) {}
+            }, 300);
+          }
+        }
+
+        function detach() {
+          if (vidEl) { try { vidEl.removeEventListener('timeupdate', onTimeUpdate); } catch (ex) {} }
+          if (mutObs) { mutObs.disconnect(); mutObs = null; }
+          vidEl = null; maxTime = 0; seekingFlag = false;
+        }
+
+        function attachVideo(v) {
+          vidEl = v;
+          v.addEventListener('seeking', function () { seekingFlag = true; });
+          v.addEventListener('seeked', function () { setTimeout(function () { seekingFlag = false; }, 100); });
+          v.addEventListener('timeupdate', onTimeUpdate);
+          FAD_LOG('pos_tracker_on', { vid: curVid });
+        }
+
+        // Restore position from sessionStorage if recently saved (enforcement reload/nav).
+        // "Recent" = saved within last 12s → enforcement fires immediately, user nav is unrelated.
+        function tryStorageRestore() {
+          try {
+            var savedPos = parseFloat(sessionStorage.getItem(posKey) || '0');
+            var savedTs = parseInt(sessionStorage.getItem(posKey + '_ts') || '0', 10);
+            var age = Date.now() - savedTs;
+            if (savedPos > 10 && age < 12000) {
+              FAD_LOG('restore_scheduled', { savedPos: savedPos, age: age });
+              // Try at 3 points to handle varying player init times
+              [800, 2000, 4000].forEach(function (delay) {
+                setTimeout(function () {
+                  var v = document.querySelector('video');
+                  if (v && v.currentTime < 3 && getVid() === curVid) {
+                    v.currentTime = savedPos;
+                    v.play().catch(function () {});
+                    FAD_LOG('position_restored_storage', { to: savedPos, delay: delay });
+                    try { sessionStorage.removeItem(posKey + '_ts'); } catch (e) {}
+                  }
+                }, delay);
+              });
+            }
+          } catch (ex) {}
+        }
+
+        function init() {
+          var prevVid = curVid;
+          detach();
+          curVid = getVid();
+          if (!curVid) return;
+          posKey = 'fb_pos_' + curVid;
+
+          // Restore if: SPA nav to same video (enforcement) OR initial/full-page load (reload enforcement)
+          if (curVid === prevVid || prevVid === null) {
+            tryStorageRestore();
+          }
+
+          var v = document.querySelector('video');
+          if (v) { attachVideo(v); return; }
+          mutObs = new MutationObserver(function () {
+            var vv = document.querySelector('video');
+            if (vv) { mutObs.disconnect(); mutObs = null; attachVideo(vv); }
+          });
+          mutObs.observe(document.documentElement, { childList: true, subtree: true });
+        }
+
+        document.addEventListener('yt-navigate-finish', function () { setTimeout(init, 300); });
+        setTimeout(init, 500);
+      })();
+
     })();
   } catch (error) {
     try {

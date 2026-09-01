@@ -23,6 +23,18 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
   manifest.background = {
     scripts: ['background/service-worker.js'],
   };
+  if (Array.isArray(manifest.content_scripts)) {
+    manifest.content_scripts = manifest.content_scripts
+      .filter((entry) => {
+        if (!Array.isArray(entry.js)) return true;
+        // Remove old/legacy scripts and the original bridge entry (we prepend a fresh one below)
+        return !entry.js.includes('content/youtube-inject.js') &&
+          !entry.js.includes('content/youtube-filter.js') &&
+          !entry.js.includes('content/youtube-firefox-bridge.js');
+      })
+      .map((entry) => ({ ...entry }));
+  }
+  // Prepend bridge after filtering so it appears exactly once
   manifest.content_scripts = [
     {
       matches: ['*://*.youtube.com/*'],
@@ -32,19 +44,6 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
     },
     ...(Array.isArray(manifest.content_scripts) ? manifest.content_scripts : []),
   ];
-  if (Array.isArray(manifest.content_scripts)) {
-    manifest.content_scripts = manifest.content_scripts
-      .filter((entry) => {
-        if (!Array.isArray(entry.js)) return true;
-        return !entry.js.includes('content/youtube-inject.js') &&
-          !entry.js.includes('content/youtube-inject-v2.js') &&
-          !entry.js.includes('content/youtube-filter.js');
-      })
-      .map((entry) => {
-        // Keep world: "MAIN" — Firefox 128+ (our strict_min_version) supports it
-        return { ...entry };
-      });
-  }
   if (!manifest.browser_specific_settings) manifest.browser_specific_settings = {};
   if (!manifest.browser_specific_settings.gecko) manifest.browser_specific_settings.gecko = {};
   // Required by AMO for new Firefox extensions
@@ -55,9 +54,6 @@ function prepareFirefoxPackage(rootDir = path.resolve(__dirname, '..')) {
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
   try {
     fs.unlinkSync(path.join(stageDir, 'content', 'youtube-inject.js'));
-  } catch {}
-  try {
-    fs.unlinkSync(path.join(stageDir, 'content', 'youtube-inject-v2.js'));
   } catch {}
 
   const rulesPath = path.join(stageDir, 'rules', 'rules.json');

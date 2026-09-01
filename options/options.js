@@ -1,4 +1,5 @@
 import { applyI18n, t } from '../common/i18n.js';
+import { loadAndApplyTheme, saveTheme } from '../common/theme.js';
 
 const PAYPAL_URL = 'https://www.paypal.com/donate/?hosted_button_id=Z79A28XHU8L7S';
 const $ = id => document.getElementById(id);
@@ -252,8 +253,27 @@ async function importSettings(file) {
   } catch { alert(t('importError')); }
 }
 
+// --- Theme ---
+function updateThemeUI(active) {
+  document.querySelectorAll('.theme-card').forEach(card => {
+    card.setAttribute('aria-pressed', String(card.dataset.themeId === active));
+  });
+}
+
 // --- Init ---
 async function init() {
+  // Apply theme before anything else renders
+  const currentTheme = await loadAndApplyTheme();
+  updateThemeUI(currentTheme);
+
+  document.querySelectorAll('.theme-card').forEach(card => {
+    card.addEventListener('click', async () => {
+      const id = card.dataset.themeId;
+      await saveTheme(id);
+      updateThemeUI(id);
+    });
+  });
+
   applyI18n();
   showVersion();
   document.title = t('optionsPageTitle');

@@ -1,9 +1,19 @@
 #!/usr/bin/env node
-const { chromium } = require('playwright');
 const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 const fs   = require('fs');
+
+if (!process.env.DISPLAY && !process.env.FADBLOCK_XVFB && fs.existsSync('/usr/bin/xvfb-run')) {
+  const result = spawnSync('/usr/bin/xvfb-run', ['-a', process.execPath, __filename, ...process.argv.slice(2)], {
+    stdio: 'inherit',
+    env: { ...process.env, FADBLOCK_XVFB: '1' },
+  });
+  process.exit(result.status ?? 1);
+}
+
+const { chromium } = require('playwright');
 const { prepareChromePackage } = require('./chrome-package');
 const { prepareFirefoxPackage } = require('./firefox-package');
 
@@ -108,7 +118,9 @@ async function testFirefox() {
 
   let xpi;
   try{
-    const out=execSync(`npx web-ext build --source-dir ${firefoxSource} --artifacts-dir /tmp/fadblock-build --overwrite-dest 2>&1`,{encoding:'utf8'});
+    const buildDir = path.join(EXT_PATH, 'dist', 'test-firefox-build');
+    fs.mkdirSync(buildDir, { recursive: true });
+    const out=execSync(`npx web-ext build --source-dir ${firefoxSource} --artifacts-dir "${buildDir}" --overwrite-dest 2>&1`,{encoding:'utf8'});
     const m=out.match(/Your web extension is ready: (.+\.(?:zip|xpi))/);
     xpi=m?m[1].trim():null;
     check(res,'web-ext build artifact',!!xpi,xpi?path.basename(xpi):'failed');
@@ -121,10 +133,11 @@ async function testFirefox() {
   check(res,'gecko id',                      !!mf.browser_specific_settings?.gecko?.id);
   check(res,'Firefox MAIN inject çıxarıldı', !mf.content_scripts?.some((entry) => entry.js?.includes('content/youtube-inject.js') || entry.js?.includes('content/youtube-inject-v2.js')));
   check(res,'Firefox bridge əlavə olunub',   !!mf.content_scripts?.some((entry) => entry.js?.includes('content/youtube-firefox-bridge.js')));
+  check(res,'Firefox youtube-filter çıxarıldı', !mf.content_scripts?.some((entry) => entry.js?.includes('content/youtube-filter.js')));
 
   const cs=fs.readFileSync(path.join(EXT_PATH,'content','content.js'),'utf8');
   check(res,'Global state yoxlaması',        cs.includes('adblock_enabled'));
-  check(res,'YouTube ruleset mövcuddur',     Array.isArray(mf.declarative_net_request?.rule_resources) && mf.declarative_net_request.rule_resources.some(r => r.id === 'youtube_ads'));
+  check(res,'Firefox rulesetdə youtube_ads yoxdur', !Array.isArray(mf.declarative_net_request?.rule_resources) || !mf.declarative_net_request.rule_resources.some(r => r.id === 'youtube_ads'));
   check(res,'Firefox bridge Chrome stagingdə yoxdur', !fs.readFileSync(path.join(chromeSource,'manifest.json'),'utf8').includes('youtube-firefox-bridge.js'));
 
   const rules=JSON.parse(fs.readFileSync(path.join(EXT_PATH,'rules','rules.json'),'utf8'));

@@ -343,5 +343,20 @@
   },
   "optionsSafeSearchBadge": {
     "message": "18+ filtri ilə aktivdir"
+  },
+  "optionsThemeTitle": {
+    "message": "Görünüş"
+  },
+  "themeLight": {
+    "message": "Açıq"
+  },
+  "themeDark": {
+    "message": "Tünd"
+  },
+  "themeMidnight": {
+    "message": "Gecə"
+  },
+  "themeSystem": {
+    "message": "Sistem"
   }
 }
