@@ -75,7 +75,7 @@ const ADULT_RULE_BASE    = 50000;
 // Cache only a little more than can ever become rules — storing 50k domains cost
 // megabytes of storage and a large merge in the event page for no added blocking.
 const MAX_ADULT_RULES    = 3000;
-const MAX_ADULT_DOMAIN_RULES = 900; // DNR cap: 5000 total limit − 4000 filter rules − ~100 others
+const MAX_ADULT_DOMAIN_RULES = 900; // see the budget note on MAX_FILTER_RULES
 const RECOVERY_RULE_BASE = 85000;
 const MAX_RECOVERY_RULES = 200;
 const ADULT_META_KEY     = 'adult_filter_meta';

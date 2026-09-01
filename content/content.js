@@ -335,21 +335,25 @@
       if (!isYouTubeWatchPage()) return;
       ensureClearState();
 
-      const directMatches = document.querySelectorAll([
+      // `#error-screen` and `yt-playability-error-supported-renderers` are part of
+      // every healthy watch page, so treating their mere presence as enforcement
+      // made directMatches always non-empty. That removed live player nodes and,
+      // because it also bypassed the rate limit below, called loadVideoById on a
+      // loop — the player rebuilt them, the next tick removed them again, and the
+      // video never got a source. Only count them when they carry the real message.
+      const candidates = document.querySelectorAll([
         'ytd-enforcement-message-view-model',
         'yt-playability-error-supported-renderers',
         '#error-screen'
       ].join(','));
 
-      directMatches.forEach((el) => {
-        const isPlayabilityNode = el.matches?.('yt-playability-error-supported-renderers, #error-screen');
-        if (!isPlayabilityNode && !looksLikeYouTubeAntiAdblock(el)) return;
-        if (!IS_FIREFOX) {
-          el.remove?.();
-          return;
-        }
-        el.remove?.();
+      const directMatches = [...candidates].filter((el) => {
+        if (el.matches?.('ytd-enforcement-message-view-model')) return true;
+        return !!el.querySelector?.('ytd-enforcement-message-view-model') ||
+          looksLikeYouTubeAntiAdblock(el);
       });
+
+      directMatches.forEach((el) => { el.remove?.(); });
 
       const containers = document.querySelectorAll([
         'tp-yt-paper-dialog',

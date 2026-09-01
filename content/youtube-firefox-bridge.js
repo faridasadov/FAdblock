@@ -91,18 +91,12 @@
           }
           return _xhrSend.apply(this,arguments);
         };
-        function unregisterSW(){
-          try{
-            if(navigator.serviceWorker){
-              navigator.serviceWorker.getRegistrations().then(function(regs){
-                regs.forEach(function(r){r.unregister();});
-              });
-            }
-          }catch(e){}
-        }
-        unregisterSW();
-        document.addEventListener('yt-navigate-start',unregisterSW);
-        document.addEventListener('yt-navigate-finish',unregisterSW);
+        // NOTE: this block used to unregister YouTube's service worker on load and
+        // on every yt-navigate event. Bisecting playback in real Firefox showed that
+        // was what stopped videos: with it, the player issued zero googlevideo
+        // segment requests and the video sat at readyState 0 forever; without it the
+        // same build plays normally. The enforcement bypass does not need it — the
+        // playabilityStatus patch above is what clears UNPLAYABLE.
       })();`;
       (document.documentElement || document.head || document.body || document).appendChild(script);
       script.remove();

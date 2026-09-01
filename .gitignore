@@ -12,3 +12,5 @@ geckodriver.exe
 scripts/test-*-output.txt
 .stagedir
 view-video.js
+yt-*.log
+adult-test*.log
